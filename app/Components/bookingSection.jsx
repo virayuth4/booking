@@ -134,6 +134,8 @@ useEffect(() => {
   const [fullName, setFullName] = useState('');
   const [contact, setContact] = useState('');
   const [note, setNote] = useState('');
+  const [bookingId, setBookingId] = useState(null);
+
 
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const d = new Date();
@@ -304,6 +306,7 @@ async function handleConfirmBooking() {
     };
 
     saveBookingToStorage(bookingRecord);
+    setBookingId(data.booking?.id ?? null);
 
     if (onConfirm) {
       try {
@@ -342,14 +345,16 @@ return (
 
         <div className="px-5 py-5">
           {submitted ? (
-            <PendingPanel
-              guests={guests}
-              date={selectedDate}
-              section={section}
-              serviceType={serviceType}
-              time={time}
-              onDone={startOver}
-            />
+           <PendingPanel
+            guests={guests}
+            date={selectedDate}
+            section={section}
+            serviceType={serviceType}
+            time={time}
+            bookingId={bookingId}
+            telegramBotUsername={process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME}
+            onDone={startOver}
+          />
           ) : submitting ? (
             <LoadingPanel />
           ) : step === 1 ? (
@@ -914,18 +919,22 @@ function PendingPanel({ guests, date, section, serviceType, time, bookingId, tel
         </p>
       </div>
 
-      {notifyRequested ? (
-        <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-600">
-          <CheckIcon className="h-4 w-4" />
-          We&apos;ll message you on Telegram once it&apos;s confirmed
-        </p>
-      ) : (
+    {notifyRequested ? (
+  <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-600">
+    <CheckIcon className="h-4 w-4" />
+    We&apos;ll message you on Telegram once it&apos;s confirmed
+  </p>
+) : (
+  <div className="flex flex-col items-center gap-2">
     <BookingTelegramNotify
-  bookingId={bookingId}
-  telegramBotUsername={process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME}
-  onConnected={(chatId) => console.log("linked:", chatId)}
-/>
-      )}
+      telegramBotUsername={process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME}
+      onConnected={(chatId) => console.log("linked:", chatId)}
+    />
+    <p className="max-w-xs text-xs text-black/40">
+      This only sends updates about this booking — no other messages.
+    </p>
+  </div>
+)}
 
       <button
         type="button"

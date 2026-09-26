@@ -103,7 +103,7 @@ function PageCard({ page }) {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
           <a
             href={`https://${link}`}
             target="_blank"
@@ -112,12 +112,18 @@ function PageCard({ page }) {
           >
             View page
           </a>
-         <Link
-          href={`/admin/booking/create?edit=true&id=${page.id}`}
-          className="rounded-full bg-[#141414] px-5 py-2.5 text-sm font-medium text-[#faf9f6] transition hover:bg-black"
-        >
-          Edit page
-        </Link>
+          <Link
+            href={`/admin/bookings/${page.slug}`}
+            className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-medium text-[#141414] transition hover:border-black/20"
+          >
+            View bookings
+          </Link>
+          <Link
+            href={`/admin/booking/create?edit=true&id=${page.id}`}
+            className="rounded-full bg-[#141414] px-5 py-2.5 text-sm font-medium text-[#faf9f6] transition hover:bg-black"
+          >
+            Edit page
+          </Link>
         </div>
       </div>
 
