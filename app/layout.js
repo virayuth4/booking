@@ -1,21 +1,18 @@
-import { Geist, Geist_Mono } from "next/font/google";
-import { Inter, Space_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Space_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Navigation from "./Components/navigation/navigation";
 import { AuthProvider } from "./auth/authContext";
 import TopNavigation from "./Components/navigation/topNavigation";
 import { NavActionProvider } from "./context/navActionContext";
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Load Google Sans alternative (Plus Jakarta Sans)
+const googleSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
 });
 
 const inter = Inter({
@@ -39,36 +36,31 @@ export const metadata = {
   openGraph: {
     images: ["/icon-192.png"],
   },
-  
 };
 
 export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${mono.variable} h-full antialiased`}
+      className={`${googleSans.variable} ${inter.variable} ${mono.variable} h-full antialiased`}
     >
-        <head>
+      <head>
         <link rel="preconnect" href="https://apis.google.com" />
-<link rel="preconnect" href="https://accounts.google.com" />
-<link rel="preconnect" href="https://rielpoint.firebaseapp.com" />
-<link rel="dns-prefetch" href="https://apis.google.com" />
-<link rel="dns-prefetch" href="https://accounts.google.com" />
-<link rel="dns-prefetch" href="https://rielpoint.firebaseapp.com" />
-
+        <link rel="preconnect" href="https://accounts.google.com" />
+        <link rel="preconnect" href="https://rielpoint.firebaseapp.com" />
+        <link rel="dns-prefetch" href="https://apis.google.com" />
+        <link rel="dns-prefetch" href="https://accounts.google.com" />
+        <link rel="dns-prefetch" href="https://rielpoint.firebaseapp.com" />
       </head>
-      <body className="min-h-full flex flex-col">
-       
+      <body className="min-h-full flex flex-col font-sans">
         <AuthProvider>
-           <NavActionProvider>
-          <TopNavigation/>
-          <main className="flex-1 pb-62.5 ">{children}</main>
-          <Analytics/>
-          <Navigation />
+          <NavActionProvider>
+            {/* <TopNavigation/> */}
+            <main className="flex-1 pb-62.5">{children}</main>
+            <Analytics />
+            {/* <Navigation /> */}
           </NavActionProvider>
         </AuthProvider>
-      
-        
       </body>
     </html>
   );

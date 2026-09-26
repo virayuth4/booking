@@ -1,5 +1,3 @@
-import withSerwistInit from "@serwist/next";
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
@@ -7,7 +5,9 @@ const nextConfig = {
   allowedDevOrigins: [
     "192.168.18.6",
     "192.168.18.6:3000",
-    "http://192.168.18.6:3000",
+    "afterglow-monsieur-quarterly.ngrok-free.dev", 
+    "*.ngrok-free.dev",                           
+    "*.ngrok-free.app",
   ],
 
   async rewrites() {
@@ -15,6 +15,10 @@ const nextConfig = {
       {
         source: "/__/auth/handler",
         destination: "/api/auth/handler",
+      },
+      {
+        source: "/api/booking-link/:path*",
+        destination: "http://127.0.0.1:9000/api/booking-link/:path*",
       },
     ];
   },
@@ -33,10 +37,5 @@ const nextConfig = {
   },
 };
 
-const withSerwist = withSerwistInit({
-  swSrc: "app/sw.js",
-  swDest: "public/sw.js",
-  disable: process.env.NODE_ENV !== "production",
-});
-
-export default withSerwist(nextConfig);
+// Export the Next.js config directly:
+export default nextConfig;

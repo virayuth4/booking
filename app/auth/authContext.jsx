@@ -49,27 +49,36 @@ const deleteCookie = (name) => {
 // exists, and always re-syncs both so they never drift apart.
 
 const getOrCreateAnonId = () => {
-  try {
-    let id = getCookie(ANON_ID_KEY) || localStorage.getItem(ANON_ID_KEY);
+  let id = null;
 
-    // Discard legacy/malformed ids (e.g. pre-migration numeric ids)
+  try {
+    id = getCookie(ANON_ID_KEY) || localStorage.getItem(ANON_ID_KEY);
     if (id && !UUID_RE.test(id)) {
       console.warn('Discarding non-UUID anonId:', id);
       id = null;
     }
-
-    if (!id) {
-      id = generateAnonId();
-    }
-    localStorage.setItem(ANON_ID_KEY, id);
-    setCookie(ANON_ID_KEY, id);
-    return id;
   } catch (error) {
-    console.error('Error getting/creating anonymous ID:', error);
-    return generateAnonId();
+    console.error('Error reading anonId:', error);
   }
-};
 
+  if (!id) {
+    id = generateAnonId();
+  }
+
+  try {
+    localStorage.setItem(ANON_ID_KEY, id);
+  } catch (error) {
+    console.error('Error persisting anonId to localStorage:', error);
+  }
+
+  try {
+    setCookie(ANON_ID_KEY, id);
+  } catch (error) {
+    console.error('Error persisting anonId to cookie:', error);
+  }
+
+  return id;
+};
 const clearAnonIdStorage = () => {
   localStorage.removeItem(ANON_ID_KEY);
   deleteCookie(ANON_ID_KEY);
@@ -126,7 +135,7 @@ export const checkUserSession = async (forceRefresh = false) => {
   cachedUserSessionPromise = (async () => {
     try {
       const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_BACKEND}/api/user/profile`,
+        `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/user/profile`,
         { method: 'GET', credentials: 'include' }
       );
 
@@ -265,7 +274,7 @@ useEffect(() => {
 
       const priorAnonId = anonId ?? getCookie(ANON_ID_KEY) ?? localStorage.getItem(ANON_ID_KEY);
 
-      const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/create-user-profile`, {
+      const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/create-user-profile`, {
         method: "POST",
         credentials: 'include',
         headers: {

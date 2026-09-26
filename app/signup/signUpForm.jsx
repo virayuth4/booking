@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Loader2, X, ChevronLeft } from 'lucide-react';
+import { Loader2, ChevronLeft } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSignUpLogic } from '../auth/signUpLogic';
 
@@ -9,6 +9,12 @@ const STEPS = {
   PHONE: 'phone',
   PASSWORD: 'password',
   OTP: 'otp',
+};
+
+const STEP_META = {
+  [STEPS.PHONE]: { n: '01', title: 'Create your account', sub: 'Start earning cashback with RielPoint.' },
+  [STEPS.PASSWORD]: { n: '02', title: 'Set a password', sub: "You'll use this to sign in next time." },
+  [STEPS.OTP]: { n: '03', title: 'Verify your phone', sub: null },
 };
 
 function GoogleIcon(props) {
@@ -33,6 +39,16 @@ function GoogleIcon(props) {
     </svg>
   );
 }
+
+// shared field classes — rounded-xl panel, hairline border, mono-friendly focus ring
+const fieldClasses =
+  'w-full rounded-xl border border-black/10 bg-white px-3.5 py-3 text-sm text-[#141414] outline-none transition placeholder:text-black/30 focus:border-black/30 focus:ring-2 focus:ring-black/5 disabled:cursor-not-allowed disabled:opacity-50';
+
+const primaryButtonClasses =
+  'flex w-full items-center justify-center gap-2 rounded-full bg-[#141414] px-4 py-3 text-sm font-semibold text-[#faf9f6] transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40';
+
+const secondaryButtonClasses =
+  'flex w-full items-center justify-center gap-2 rounded-full border border-black/10 bg-[#f2f0ea] px-4 py-3 text-sm font-semibold text-[#141414] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50';
 
 export default function SignUpForm() {
   const router = useRouter();
@@ -89,7 +105,8 @@ export default function SignUpForm() {
     setError('');
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/user/registration/initiate`, {
+      console.log("Sending Registration Initiate")
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/user/registration/initiate`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -125,7 +142,7 @@ export default function SignUpForm() {
 
     try {
       const verifyResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND}/api/user/registration/otp/confirmation/${formattedPhoneForApi()}`,
+        `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/user/registration/otp/confirmation/${formattedPhoneForApi()}`,
         {
           method: 'POST',
           credentials: 'include',
@@ -143,12 +160,12 @@ export default function SignUpForm() {
       // (see backend notes below) — sign the user in client-side now
       const result = await phoneEmailSignUp(formattedPhoneForApi(), password, referredBy);
 
-    if (result.success) {
-      setPassword('');
-      router.push(callback || '/');
-    } else {
-      throw new Error(result.error || 'Failed to complete sign in');
-    }
+      if (result.success) {
+        setPassword('');
+        router.push(callback || '/');
+      } else {
+        throw new Error(result.error || 'Failed to complete sign in');
+      }
     } catch (error) {
       setOtpError(error.message || 'Failed to verify code. Please try again.');
     } finally {
@@ -161,8 +178,9 @@ export default function SignUpForm() {
     setOtpError('');
 
     try {
+      console.log("Hand resending otp")
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND}/api/user/registration/otp/resend/${formattedPhoneForApi()}`,
+        `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/user/registration/otp/resend/${formattedPhoneForApi()}`,
         {
           method: 'POST',
           credentials: 'include',
@@ -203,16 +221,16 @@ export default function SignUpForm() {
   const formatTime = (seconds) =>
     `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 
-  const stepIndex = step === STEPS.PHONE ? 1 : step === STEPS.PASSWORD ? 2 : 3;
-
   const goBack = () => {
     setError('');
     if (step === STEPS.PASSWORD) setStep(STEPS.PHONE);
     else if (step === STEPS.OTP) setStep(STEPS.PASSWORD);
   };
 
+  const meta = STEP_META[step];
+
   return (
-    <div className="min-h-screen px-5 py-8 text-slate-900 md:px-6 md:py-12">
+    <div className="min-h-screen bg-white px-5 py-8 text-[#141414] md:px-6 md:py-12">
       <div className="mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-sm flex-col md:justify-center">
 
         {/* Header */}
@@ -222,43 +240,37 @@ export default function SignUpForm() {
               type="button"
               onClick={goBack}
               disabled={isLoading || isVerifying}
-              className="mb-4 -ml-1 flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-900 disabled:opacity-50"
+              className="mb-5 -ml-1 flex items-center gap-1 text-sm font-medium text-black/55 hover:text-[#141414] disabled:opacity-50"
             >
               <ChevronLeft className="h-4 w-4" />
               Back
             </button>
           )}
 
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {step === STEPS.PHONE && 'Create your account'}
-            {step === STEPS.PASSWORD && 'Set a password'}
-            {step === STEPS.OTP && 'Verify your phone'}
+          {/* mono step numeral over a hairline rule */}
+          <div className="mb-4 border-t border-black/15 pt-2">
+            <span className="font-mono text-[11px] tracking-wide text-black/35">{meta.n} / 03</span>
+          </div>
+
+          <h1 className="text-2xl font-semibold leading-[1.05] tracking-tight">
+            {meta.title}
           </h1>
 
-          <p className="mt-2 text-sm text-slate-500">
-            {step === STEPS.PHONE && 'Start earning cashback with RielPoint.'}
-            {step === STEPS.PASSWORD && "You'll use this to sign in next time."}
-            {step === STEPS.OTP && (
-              <>Enter the code sent to +855 {formattedPhoneForApi()}</>
+          <p className="mt-2 text-sm text-black/55">
+            {step === STEPS.OTP ? (
+              <>
+                Enter the code sent to{' '}
+                <span className="font-mono text-black/70">+855 {formattedPhoneForApi()}</span>
+              </>
+            ) : (
+              meta.sub
             )}
           </p>
-
-          {/* Step indicator */}
-          {/* <div className="mt-4 flex gap-1.5">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className={`h-1 flex-1 rounded-full transition ${
-                  i <= stepIndex ? 'bg-black' : 'bg-slate-200'
-                }`}
-              />
-            ))}
-          </div> */}
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-5 rounded-lg bg-red-50 px-3.5 py-3 text-sm text-red-600">
+          <div className="mb-5 rounded-xl border border-red-500/15 bg-red-500/5 px-3.5 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -270,7 +282,7 @@ export default function SignUpForm() {
               type="button"
               onClick={handleGoogleSignUp}
               disabled={isGoogleLoading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className={secondaryButtonClasses}
             >
               {isGoogleLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -281,9 +293,9 @@ export default function SignUpForm() {
             </button>
 
             <div className="my-5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-xs font-medium text-slate-400">OR</span>
-              <div className="h-px flex-1 bg-slate-200" />
+              <div className="h-px flex-1 bg-black/10" />
+              <span className="font-mono text-[11px] tracking-wide text-black/35">OR</span>
+              <div className="h-px flex-1 bg-black/10" />
             </div>
 
             <form onSubmit={handlePhoneSubmit} className="space-y-5">
@@ -300,15 +312,11 @@ export default function SignUpForm() {
                   required
                   autoFocus
                   autoComplete="tel"
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  className={fieldClasses}
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={!isPhoneNumberValid()}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-40"
-              >
+              <button type="submit" disabled={!isPhoneNumberValid()} className={primaryButtonClasses}>
                 Continue
               </button>
             </form>
@@ -327,9 +335,9 @@ export default function SignUpForm() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
-                  className="text-xs font-medium text-slate-500 hover:text-slate-900 disabled:opacity-50"
+                  className="font-mono text-[11px] tracking-wide text-black/55 hover:text-[#141414] disabled:opacity-50"
                 >
-                  {showPassword ? 'Hide' : 'Show'}
+                  {showPassword ? 'HIDE' : 'SHOW'}
                 </button>
               </div>
 
@@ -343,15 +351,11 @@ export default function SignUpForm() {
                 placeholder="Enter your password"
                 disabled={isLoading}
                 autoComplete="new-password"
-                className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className={fieldClasses}
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading || !password}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
+            <button type="submit" disabled={isLoading || !password} className={primaryButtonClasses}>
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -367,12 +371,13 @@ export default function SignUpForm() {
         {/* Step 3: OTP */}
         {step === STEPS.OTP && (
           <>
-            <div className="mb-5 text-center text-sm text-slate-500">
-              Code expires in <span className="font-medium text-slate-900">{formatTime(timeLeft)}</span>
+            <div className="mb-5 text-center text-sm text-black/55">
+              Code expires in{' '}
+              <span className="font-mono font-medium text-[#141414]">{formatTime(timeLeft)}</span>
             </div>
 
             {otpError && (
-              <div className="mb-5 rounded-lg bg-red-50 px-3.5 py-3 text-sm text-red-600">
+              <div className="mb-5 rounded-xl border border-red-500/15 bg-red-500/5 px-3.5 py-3 text-sm text-red-600">
                 {otpError}
               </div>
             )}
@@ -393,14 +398,14 @@ export default function SignUpForm() {
                   maxLength={6}
                   inputMode="numeric"
                   autoFocus
-                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-center text-lg font-semibold tracking-[0.3em] outline-none transition placeholder:text-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${fieldClasses} text-center font-mono text-lg tracking-[0.3em] placeholder:text-black/20`}
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isVerifying || timeLeft <= 0}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-black/90 disabled:cursor-not-allowed disabled:opacity-40"
+                className={primaryButtonClasses}
               >
                 {isVerifying ? (
                   <>
@@ -416,19 +421,19 @@ export default function SignUpForm() {
             <div className="mt-6 text-center">
               {timeLeft <= 0 ? (
                 attempts > 3 ? (
-                  <p className="text-sm text-slate-400">Maximum resend attempts reached.</p>
+                  <p className="text-sm text-black/35">Maximum resend attempts reached.</p>
                 ) : (
                   <button
                     type="button"
                     onClick={handleResendOTP}
                     disabled={isVerifying || isResending}
-                    className="text-sm font-medium text-slate-900 hover:underline disabled:opacity-50"
+                    className="text-sm font-medium text-[#141414] hover:underline disabled:opacity-50"
                   >
                     {isResending ? 'Resending...' : 'Resend verification code'}
                   </button>
                 )
               ) : (
-                <p className="text-sm text-slate-400">You can request a new code after it expires.</p>
+                <p className="text-sm text-black/35">You can request a new code after it expires.</p>
               )}
             </div>
           </>
@@ -437,19 +442,19 @@ export default function SignUpForm() {
         {/* Login */}
         {step === STEPS.PHONE && (
           <div className="mt-8 text-center text-sm">
-            <span className="text-slate-500">Already have an account?</span>{' '}
-           <button
-            type="button"
-            onClick={() => router.push(callback ? `/login?callback=${encodeURIComponent(callback)}` : '/login')}
-            className="font-semibold text-slate-900 hover:underline"
-          >
-            Sign in
-          </button>
+            <span className="text-black/55">Already have an account?</span>{' '}
+            <button
+              type="button"
+              onClick={() => router.push(callback ? `/login?callback=${encodeURIComponent(callback)}` : '/login')}
+              className="font-semibold text-[#141414] hover:underline"
+            >
+              Sign in
+            </button>
           </div>
         )}
 
         {/* Footer */}
-        <div className="mt-10 text-center text-xs text-slate-400">
+        <div className="mt-10 text-center font-mono text-[11px] text-black/35">
           © {new Date().getFullYear()} RielPoint
         </div>
       </div>

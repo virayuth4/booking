@@ -5,8 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import authenticatedFetch from '@/app/auth/authenticatedFetch';
 import { AuthContext, checkUserSession, setCurrentUserManually} from './authContext';
 
-const STORAGE_KEY = 'shopping-cart';
-const CART_UPDATED_EVENT = 'cartUpdated';
+
 
 export const useLoginLogic = ({ isModal = false, callback: callbackOverride  }) => {
 const [isOpen, setIsOpen] = useState(false)
@@ -35,7 +34,6 @@ const [isOpen, setIsOpen] = useState(false)
 
       console.log('currentUser after successful login', currentUser)
       
-      window.dispatchEvent(new Event(CART_UPDATED_EVENT));
     //   await loadCart()
 
       if (isModal) {
@@ -43,7 +41,7 @@ const [isOpen, setIsOpen] = useState(false)
       } else if (callbackUrl) {
         await router.push(decodeURIComponent(callbackUrl));
       } else {
-        router.push('/');
+        router.push('/admin');
       }
 
     } catch (error) {

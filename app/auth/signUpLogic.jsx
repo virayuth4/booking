@@ -43,7 +43,7 @@ const handleSuccessfulSignUp = async (user, fullName, referredBy) => {
   // Step A: the critical, must-succeed-or-rollback part
   let data;
   try {
-    const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/create-user-profile`, {
+    const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/create-user-profile`, {
       method: "POST",
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
