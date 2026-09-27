@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import BookingSection from "../Components/bookingSection";
 import MyBookingButton from "../Components/myBookingButton";
+import ViewTracker from "../Components/viewTracker";
+import HoursList from "../Components/hourList";
 
 const DAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const DAY_LABEL = {
@@ -114,6 +116,7 @@ export default async function BookingPage({ params }) {
 
   return (
     <main className="relative min-h-screen w-full bg-white pb-24 font-sans text-[#141414] antialiased md:pb-0">
+      <ViewTracker/>
       <style>{`html { scroll-behavior: smooth; }`}</style>
 
       {/* Hero */}
@@ -212,62 +215,8 @@ export default async function BookingPage({ params }) {
               </section>
             )}
 
-            <section className="mt-10">
-              <h2 className="text-xl font-semibold tracking-tight text-[#141414]">
-                Hours
-              </h2>
-              <ul className="mt-4 divide-y divide-black/[0.06] overflow-hidden rounded-xl border border-black/10">
-                {DAY_ORDER.map((day) => {
-                  const hours = openingHours?.[day];
-                  const isToday = day === todayKey;
-                  return (
-                    <li
-                      key={day}
-                      className={`flex items-center gap-4 px-5 py-3.5 text-sm ${
-                        isToday ? "bg-[#faf9f6]" : ""
-                      }`}
-                    >
-                      <span
-                        className={`w-28 shrink-0 ${
-                          isToday ? "font-medium text-[#141414]" : "text-black/60"
-                        }`}
-                      >
-                        {DAY_LABEL[day]}
-                      </span>
-                      {hours?.closed ? (
-                        <span className="text-black/30">Closed</span>
-                      ) : (
-                        <span className={isToday ? "text-[#141414]" : "text-black/45"}>
-                          {to12Hour(hours.open)} – {to12Hour(hours.close)}
-                        </span>
-                      )}
-                      {isToday && (
-                        <span className="ml-auto rounded border border-black/10 px-2 py-0.5 font-mono text-[11px] text-black/40">
-                          today
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-
-              {closedDates.length > 0 && (
-                <div className="mt-6">
-                  <p className="text-sm font-medium text-black/60">Closed on</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {closedDates.map((date) => (
-                      <span
-                        key={date}
-                        className="rounded border border-black/10 px-2 py-0.5 font-mono text-[11px] text-black/40"
-                      >
-                        {date}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-
+                <HoursList openingHours={openingHours} todayKey={todayKey} closedDates={closedDates} />
+         
             <div className="mt-10">
          <BookingSection
             pageId={page.id}
@@ -284,7 +233,7 @@ export default async function BookingPage({ params }) {
           <aside className="hidden lg:block">
             <div className="sticky top-24 rounded-2xl border border-black/10 bg-white p-6">
               <h2 className="text-lg font-semibold tracking-tight text-[#141414]">
-                Reserve a table
+                Reserve 
               </h2>
               <p className="mt-1 text-sm text-black/45">
                 Pick a time online, or call or message us directly.
@@ -295,7 +244,7 @@ export default async function BookingPage({ params }) {
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-[#141414] px-4 py-3 text-sm font-medium text-[#faf9f6] transition hover:bg-black"
                 >
                   <CalendarIcon className="h-4 w-4" />
-                  Reserve a table
+                  Reserve
                 </a>
                 {telHref && (
                   <a
@@ -334,7 +283,7 @@ export default async function BookingPage({ params }) {
       </div>
 
       {/* Mobile floating action pill */}
-      <div className="fixed inset-x-0 bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-50 flex justify-center px-4 md:hidden">
+      <div className="fixed inset-x-0 bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-50 flex justify-center px-4 ">
         <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-[#141414]/95 p-1.5 shadow-2xl shadow-black/30 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <a
             href="#booking"

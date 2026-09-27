@@ -1,12 +1,12 @@
 import { Plus_Jakarta_Sans, Space_Mono } from "next/font/google";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navigation from "./Components/navigation/navigation";
 import { AuthProvider } from "./auth/authContext";
-import TopNavigation from "./Components/navigation/topNavigation";
 import { NavActionProvider } from "./context/navActionContext";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
+import Navigation from "./Components/navigation/navigation";
+import ConditionalNavigation from "./Components/navigation/conditionalNavigation";
 
 // Load Google Sans alternative (Plus Jakarta Sans)
 const googleSans = Plus_Jakarta_Sans({
@@ -54,12 +54,11 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-full flex flex-col font-sans">
         <AuthProvider>
-          <NavActionProvider>
+                <ConditionalNavigation/>
             {/* <TopNavigation/> */}
             <main className="flex-1 pb-62.5">{children}</main>
             <Analytics />
-            {/* <Navigation /> */}
-          </NavActionProvider>
+        
         </AuthProvider>
       </body>
     </html>

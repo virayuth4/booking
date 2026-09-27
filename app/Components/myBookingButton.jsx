@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X, RefreshCw } from "lucide-react";
 import { TicketIcon } from "./ticketIcon";
+import Link from "next/link";
 
 /** Reads a cookie value by name (client-side only). */
 function getCookie(name) {
@@ -182,14 +183,13 @@ export default function MyBookingButton() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openModal}
-        className="flex shrink-0 items-center gap-2 rounded-full border border-white/30 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
-      >
-        <TicketIcon className="h-4 w-4" />
-        My booking
-      </button>
+    <Link
+  href="/my-bookings"
+  className="flex shrink-0 items-center gap-2 rounded-full border border-white/30 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
+>
+  <TicketIcon className="h-4 w-4" />
+  My booking
+</Link>
 
       {mounted && modal ? createPortal(modal, document.body) : null}
     </>

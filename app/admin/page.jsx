@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/auth/authContext";
 import authenticatedFetch from "@/app/auth/authenticatedFetch";
+import { FormatTime } from "@/lib/formatTime";
+import { initials } from "@/lib/initials";
 
 const stats = [
   { label: "Page views", value: "1,284", delta: "+18%", period: "vs last week" },
@@ -29,13 +31,6 @@ const DAYS = [
   { key: "sun", label: "Sun" },
 ];
 
-function formatTime(t) {
-  if (!t) return "";
-  const [h, m] = t.split(":").map(Number);
-  const period = h >= 12 ? "PM" : "AM";
-  const hour12 = h % 12 || 12;
-  return m === 0 ? `${hour12} ${period}` : `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 function summarizeHours(hours) {
   if (!hours) return [];
@@ -57,21 +52,12 @@ function summarizeHours(hours) {
 
   return groups.map((g) => {
     const range = g.from === g.to ? g.from : `${g.from}–${g.to}`;
-    const time = g.closed ? "Closed" : `${formatTime(g.open)}–${formatTime(g.close)}`;
+    const time = g.closed ? "Closed" : `${FormatTime(g.open)}–${FormatTime(g.close)}`;
     return `${range} ${time}`;
   });
 }
 
-function initials(name) {
-  return (
-    (name || "")
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((w) => w[0]?.toUpperCase())
-      .join("") || "—"
-  );
-}
+
 
 function PageCard({ page }) {
   const link = `ledger.app/${page.slug}`;
@@ -105,7 +91,7 @@ function PageCard({ page }) {
 
         <div className="flex shrink-0 flex-wrap items-center gap-3">
           <a
-            href={`https://${link}`}
+            href={`/${page.slug}`}
             target="_blank"
             rel="noreferrer"
             className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-medium text-[#141414] transition hover:border-black/20"
@@ -113,7 +99,7 @@ function PageCard({ page }) {
             View page
           </a>
           <Link
-            href={`/admin/bookings/${page.slug}`}
+            href={`/admin/booking/${page.slug}`}
             className="rounded-full border border-black/10 bg-white px-5 py-2.5 text-sm font-medium text-[#141414] transition hover:border-black/20"
           >
             View bookings

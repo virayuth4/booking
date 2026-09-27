@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { AuthContext, useAuth } from '../auth/authContext';
-import { ClockIcon } from 'lucide-react';
+import { ClockIcon, XIcon } from 'lucide-react';
 import BookingTelegramNotify from './bookingTelegramNotify';
 
 
@@ -503,14 +503,19 @@ function BookingStep({
   </BookingField>
 )}  
 
-      <BookingField
-        label="Guests"
-        value={`${guests} ${guests === 1 ? 'guest' : 'guests'}`}
-        isOpen={activeField === 'guests'}
-        onClick={() => onToggleField('guests')}
-      >
-        <GuestSelector guests={guests} setGuests={setGuests} maxGuests={maxGuests} />
-      </BookingField>
+    <BookingField
+      label="Guests"
+      value={`${guests} ${guests === 1 ? 'guest' : 'guests'}`}
+      isOpen={activeField === 'guests'}
+      onClick={() => onToggleField('guests')}
+    >
+      <GuestSelector
+        guests={guests}
+        setGuests={setGuests}
+        maxGuests={maxGuests}
+        onConfirm={() => onToggleField('guests')}
+      />
+    </BookingField>
 
       <BookingField
         label="Service type"
@@ -563,12 +568,12 @@ function DetailsStep({ fullName, setFullName, contact, setContact, note, setNote
     <div className="flex flex-col gap-5">
       <label className="block">
         <span className="mb-1.5 block text-xs font-medium text-black/50">Full name</span>
-        <input
+       <input
           type="text"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           placeholder="e.g. Sokha Chan"
-          className="w-full rounded-xl border border-black/10 px-3.5 py-2.5 text-sm text-[#141414] outline-none transition-colors placeholder:text-black/30 focus:border-[#141414]"
+          className="w-full rounded-xl border border-black/10 px-3.5 py-2.5 text-base text-[#141414] outline-none transition-colors placeholder:text-black/30 focus:border-[#141414]"
         />
       </label>
 
@@ -579,7 +584,7 @@ function DetailsStep({ fullName, setFullName, contact, setContact, note, setNote
           value={contact}
           onChange={(e) => setContact(e.target.value)}
           placeholder="e.g. 012 345 678 "
-          className="w-full rounded-xl border border-black/10 px-3.5 py-2.5 text-sm text-[#141414] outline-none transition-colors placeholder:text-black/30 focus:border-[#141414]"
+          className="w-full rounded-xl border border-black/10 px-3.5 py-2.5 text-base text-[#141414] outline-none transition-colors placeholder:text-black/30 focus:border-[#141414]"
         />
       </label>
 
@@ -603,33 +608,69 @@ function DetailsStep({ fullName, setFullName, contact, setContact, note, setNote
 
 function BookingField({ label, value, placeholder = 'Choose', onClick, disabled = false, isOpen, children }) {
   return (
-    <div
-      className={`overflow-hidden rounded-2xl border transition-colors ${
-        disabled ? 'border-black/5 bg-[#faf9f6]' : isOpen ? 'border-[#141414]/50' : 'border-black/10'
-      }`}
-    >
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onClick}
-        className={`group flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors ${
-          disabled ? 'cursor-not-allowed' : 'hover:bg-[#faf9f6]'
+    <>
+      <div
+        className={`overflow-hidden rounded-2xl border transition-colors ${
+          disabled ? 'border-black/5 bg-[#faf9f6]' : 'border-black/10'
         }`}
       >
-        <div className="min-w-0">
-          <span className="block text-[11px] font-semibold uppercase tracking-wide text-black/40">{label}</span>
-          <span className={`mt-1 block truncate text-sm font-medium ${value ? 'text-[#141414]' : 'text-black/35'}`}>
-            {value || placeholder}
-          </span>
-        </div>
-        {!disabled && (
-          <ChevronDownIcon
-            className={`ml-3 h-4 w-4 shrink-0 text-black/35 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          />
-        )}
-      </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onClick}
+          className={`group flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors ${
+            disabled ? 'cursor-not-allowed' : 'hover:bg-[#faf9f6]'
+          }`}
+        >
+          <div className="min-w-0">
+            <span className="block text-[11px] font-semibold uppercase tracking-wide text-black/40">{label}</span>
+            <span className={`mt-1 block truncate text-sm font-medium ${value ? 'text-[#141414]' : 'text-black/35'}`}>
+              {value || placeholder}
+            </span>
+          </div>
+          {!disabled && <ChevronRightIcon className="ml-3 h-4 w-4 shrink-0 text-black/35" />}
+        </button>
+      </div>
 
-      {isOpen && !disabled && <div className="border-t border-black/10 px-4 py-4">{children}</div>}
+      <Modal isOpen={isOpen && !disabled} onClose={onClick} title={label}>
+        {children}
+      </Modal>
+    </>
+  );
+}
+
+/* ================================= MODAL ================================= */
+
+function Modal({ isOpen, onClose, title, children }) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
+
+      <div className="relative z-10 max-h-[85vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-[#141414]">{title}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-black/40 transition hover:bg-black/5 hover:text-black"
+          >
+            <XIcon className="h-4 w-4" />
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }
@@ -667,37 +708,46 @@ function LocationSelector({ sections, selected, onSelect }) {
 
 /* ============================= GUEST SELECTOR ============================= */
 
-function GuestSelector({ guests, setGuests, maxGuests }) {
+function GuestSelector({ guests, setGuests, maxGuests, onConfirm }) {
   return (
-    <div className="flex items-center justify-center gap-6 py-2">
-      <button
-        type="button"
-        disabled={guests <= 1}
-        onClick={() => setGuests((g) => Math.max(1, g - 1))}
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 text-black/60 transition hover:border-black/25 disabled:opacity-30"
-        aria-label="Decrease guests"
-      >
-        <MinusIcon className="h-4 w-4" />
-      </button>
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-center gap-6 py-2">
+        <button
+          type="button"
+          disabled={guests <= 1}
+          onClick={() => setGuests((g) => Math.max(1, g - 1))}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 text-black/60 transition hover:border-black/25 disabled:opacity-30"
+          aria-label="Decrease guests"
+        >
+          <MinusIcon className="h-4 w-4" />
+        </button>
 
-      <div className="w-20 text-center">
-        <div className="text-2xl font-semibold text-[#141414]">{guests}</div>
-        <div className="mt-1 text-xs text-black/45">{guests === 1 ? 'guest' : 'guests'}</div>
+        <div className="w-20 text-center">
+          <div className="text-2xl font-semibold text-[#141414]">{guests}</div>
+          <div className="mt-1 text-xs text-black/45">{guests === 1 ? 'guest' : 'guests'}</div>
+        </div>
+
+        <button
+          type="button"
+          disabled={guests >= maxGuests}
+          onClick={() => setGuests((g) => Math.min(maxGuests, g + 1))}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 text-black/60 transition hover:border-black/25 disabled:opacity-30"
+          aria-label="Increase guests"
+        >
+          <PlusIcon className="h-4 w-4" />
+        </button>
       </div>
 
       <button
         type="button"
-        disabled={guests >= maxGuests}
-        onClick={() => setGuests((g) => Math.min(maxGuests, g + 1))}
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 text-black/60 transition hover:border-black/25 disabled:opacity-30"
-        aria-label="Increase guests"
+        onClick={onConfirm}
+        className="w-full rounded-full bg-[#141414] px-5 py-3 text-sm font-medium text-[#faf9f6] transition hover:bg-black"
       >
-        <PlusIcon className="h-4 w-4" />
+        Confirm {guests} {guests === 1 ? 'guest' : 'guests'}
       </button>
     </div>
   );
 }
-
 /* ========================= SERVICE TYPE SELECTOR ========================= */
 
 function ServiceTypeSelector({ serviceTypes, selected, onSelect }) {
@@ -877,7 +927,7 @@ function SuccessPanel({ guests, date, section, serviceType, time, onDone }) {
       <button
         type="button"
         onClick={onDone}
-        className="mt-3 rounded-full border border-black/10 px-5 py-3 text-sm font-medium text-[#141414] transition hover:border-black/20"
+        className="mt-3 px-5 py-3 text-sm font-medium text-[#141414] transition hover:border-black/20"
       >
         Make another booking
       </button>
@@ -939,7 +989,7 @@ function PendingPanel({ guests, date, section, serviceType, time, bookingId, tel
       <button
         type="button"
         onClick={onDone}
-        className="mt-1 rounded-full border border-black/10 px-5 py-3 text-sm font-medium text-[#141414] transition hover:border-black/20"
+        className="mt-1 underline px-5 py-3 text-sm font-medium text-[#141414] "
       >
         Make another booking
       </button>

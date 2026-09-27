@@ -61,7 +61,7 @@
       return (
         <main className="min-h-screen bg-white font-sans text-[#141414] antialiased">
           {/* Nav */}
-          <header className="sticky top-0 z-20 border-b border-black/10 bg-white backdrop-blur">
+          {/* <header className="sticky top-0 z-20 border-b border-black/10 bg-white backdrop-blur">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
               <span className="text-lg font-semibold tracking-tight">Ledger</span>
               <nav className="hidden gap-8 text-sm text-black/60 md:flex">
@@ -76,7 +76,7 @@
                 Sign Up 
               </a>
             </div>
-          </header>
+          </header> */}
 
           {/* Hero */}
           <section className="mx-auto max-w-6xl px-6 pb-16 pt-20 md:pt-28">
