@@ -3,8 +3,8 @@
 import authenticatedFetch from "@/app/auth/authenticatedFetch";
 import { useAuth } from "@/app/auth/authContext";
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { CATEGORIES } from "@/lib/constants";
+import { useSearchParams } from "next/navigation";
 
 const MAX_IMAGES = 5;
 

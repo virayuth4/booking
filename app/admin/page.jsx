@@ -266,7 +266,7 @@ export default function AdminHome() {
             ) : pages.length === 0 ? (
               <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-black/15 bg-white p-8">
                 <p className="text-sm text-black/55">
-                  You haven't set up a booking page yet.
+                  You haven&apos;t set up a booking page yet.
                 </p>
                 <Link
                   href="/admin/booking/create"
