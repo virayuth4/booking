@@ -6,7 +6,7 @@ export default function Navigation({ currentUser, plan }) {
   return (
     <header className="sticky top-0 z-20 border-b border-black/10 bg-white backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <span className="text-lg font-semibold tracking-tight">acme reserve</span>
+        <span className="text-lg font-semibold tracking-tight">acme reserve </span>
 
         <nav className="hidden gap-8 text-sm text-black/60 md:flex">
           <a href="#industries" className="transition hover:text-black">Who it's for</a>

@@ -195,21 +195,9 @@ export default function AdminHome() {
   const atLimit = pages.length >= limit;
 
   return (
-    <main className="min-h-screen bg-[#faf9f6] font-sans text-[#141414] antialiased">
+    <main className="min-h-screen bg-white font-sans text-[#141414] antialiased">
       {/* Nav */}
-      <header className="sticky top-0 z-20 border-b border-black/10 bg-[#faf9f6]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-          <span className="text-lg font-semibold tracking-tight">acme reserve</span>
-          <div className="flex items-center gap-4">
-            <span className="hidden rounded-full border border-black/10 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide text-black/45 sm:inline">
-              {plan}
-            </span>
-            <div className="h-8 w-8 rounded-full bg-[#141414] text-center font-mono text-xs leading-8 text-[#faf9f6]">
-              {initials(currentUser?.fullname || currentUser?.email)}
-            </div>
-          </div>
-        </div>
-      </header>
+    
 
       <div className="mx-auto max-w-5xl px-6 py-12">
         {/* Booking pages */}

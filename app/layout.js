@@ -28,14 +28,14 @@ const mono = Space_Mono({
 });
 
 export const metadata = {
-  title: "Riel Point",
-  description: "Cambodia Cashback & Rewards Platform",
-  icons: {
-    icon: "/icon-192.png",
-  },
-  openGraph: {
-    images: ["/icon-192.png"],
-  },
+  title: "acme reserve",
+  description: "Booking platform for restaurants, pilate studios, barbers and etc.",
+  // icons: {
+  //   icon: "/icon-192.png",
+  // },
+  // openGraph: {
+  //   images: ["/icon-192.png"],
+  // },
 };
 
 export default function RootLayout({ children }) {

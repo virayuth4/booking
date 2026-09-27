@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { CATEGORIES } from "@/lib/constants";
 import { useSearchParams } from "next/navigation";
 
-const MAX_IMAGES = 5;
+const MAX_IMAGES = 10;
 
 const DAYS = [
   { key: "mon", label: "Monday" },

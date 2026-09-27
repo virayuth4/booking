@@ -149,7 +149,7 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
               required
               disabled={isLoading}
               autoComplete="tel"
-              className="w-full rounded-lg border border-border bg-card px-3.5 py-3 font-body text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-lg border border-border bg-card px-3.5 py-3 font-body text-base text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
 
@@ -182,7 +182,7 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
               placeholder="Enter your password"
               disabled={isLoading}
               autoComplete="current-password"
-              className="w-full rounded-lg border border-border bg-card px-3.5 py-3 font-body text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-lg border border-border bg-card px-3.5 py-3 font-body text-base text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
 
@@ -199,22 +199,20 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
           </div>
 
           {/* Submit */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="press flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 font-sans text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Signing in...</span>
-              </>
-            ) : (
-              <span>
-                {'Sign in'}
-              </span>
-            )}
-          </button>
+         <button
+          type="submit"
+          disabled={isLoading}
+          className="text-white press flex w-full items-center justify-center gap-2 bg-black rounded-full bg-primary px-4 py-3.5 font-sans text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:opacity-90 hover:shadow-xl hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Signing in...</span>
+            </>
+          ) : (
+            <span>Sign in</span>
+          )}
+        </button>
         </form>
 
         {/* Signup */}
@@ -236,7 +234,7 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
 
         {/* Footer */}
         <div className="mt-10 text-center font-tape text-[11px] uppercase tracking-wider text-muted-foreground/70">
-          © {new Date().getFullYear()} RielPoint
+          © {new Date().getFullYear()} acme reserve
         </div>
       </div>
     </div>

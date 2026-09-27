@@ -3,17 +3,11 @@ import BookingSection from "../Components/bookingSection";
 import MyBookingButton from "../Components/myBookingButton";
 import ViewTracker from "../Components/viewTracker";
 import HoursList from "../Components/hourList";
+import MobileActionBar from "../Components/mobileActionBar";
+import GalleryCarousel from "../Components/galleryCarousel";
 
 const DAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-const DAY_LABEL = {
-  mon: "Monday",
-  tue: "Tuesday",
-  wed: "Wednesday",
-  thu: "Thursday",
-  fri: "Friday",
-  sat: "Saturday",
-  sun: "Sunday",
-};
+
 
 const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -192,27 +186,9 @@ export default async function BookingPage({ params }) {
       <div className="mx-auto w-full max-w-3xl px-5 sm:px-6">
         <div className="grid grid-cols-1 gap-10 pt-10 lg:grid-cols-[1fr_280px] lg:gap-12">
           {/* Primary column */}
-          <div className="min-w-0">
-            {galleryImages.length > 0 && (
-              <section>
-                <h2 className="text-xl font-semibold tracking-tight text-[#141414]">
-                  Gallery
-                </h2>
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {galleryImages.map((src, i) => (
-                    <div
-                      key={src}
-                      className="aspect-square overflow-hidden rounded-xl border border-black/10 bg-[#f2f0ea]"
-                    >
-                      <img
-                        src={src}
-                        alt={`${name} photo ${i + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </section>
+          <div className="min-w-0 ">
+           {galleryImages.length > 0 && (
+           <GalleryCarousel images={galleryImages} name={name} />
             )}
 
                 <HoursList openingHours={openingHours} todayKey={todayKey} closedDates={closedDates} />
@@ -283,30 +259,7 @@ export default async function BookingPage({ params }) {
       </div>
 
       {/* Mobile floating action pill */}
-      <div className="fixed inset-x-0 bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-50 flex justify-center px-4 ">
-        <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-[#141414]/95 p-1.5 shadow-2xl shadow-black/30 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <a
-            href="#booking"
-            className="flex shrink-0 items-center gap-2 rounded-full bg-[#faf9f6] px-4 py-2.5 text-sm font-medium text-[#141414] transition hover:bg-white"
-          >
-            <CalendarIcon className="h-4 w-4" />
-            Reserve
-          </a>
-       <MyBookingButton/>
-          {telegramHref && (
-            <a
-              href={telegramHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Message on Telegram"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <TelegramIcon className="h-4 w-4" />
-            </a>
-          )}
-          
-        </div>
-      </div>
+   <MobileActionBar telegramHref={telegramHref} />
     </main>
   );
 }

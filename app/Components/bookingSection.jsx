@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { AuthContext, useAuth } from '../auth/authContext';
-import { ClockIcon, XIcon } from 'lucide-react';
+import { ClockIcon, XIcon, User, Phone, StickyNote, Users, Calendar, Clock, Utensils, MapPin } from 'lucide-react';
 import BookingTelegramNotify from './bookingTelegramNotify';
 
 
@@ -491,9 +491,10 @@ function BookingStep({
 }) {
   return (
     <div className="flex flex-col gap-3">
-    {sections.length > 1 && (
+{sections.length > 1 && (
   <BookingField
     label="Location"
+    icon={MapPin}
     value={section?.name}
     placeholder="Choose a location"
     isOpen={activeField === 'location'}
@@ -501,62 +502,66 @@ function BookingStep({
   >
     <LocationSelector sections={sections} selected={section} onSelect={onSelectSection} />
   </BookingField>
-)}  
+)}
 
-    <BookingField
-      label="Guests"
-      value={`${guests} ${guests === 1 ? 'guest' : 'guests'}`}
-      isOpen={activeField === 'guests'}
-      onClick={() => onToggleField('guests')}
-    >
-      <GuestSelector
-        guests={guests}
-        setGuests={setGuests}
-        maxGuests={maxGuests}
-        onConfirm={() => onToggleField('guests')}
-      />
-    </BookingField>
+<BookingField
+  label="Guests"
+  icon={Users}
+  value={`${guests} ${guests === 1 ? 'guest' : 'guests'}`}
+  isOpen={activeField === 'guests'}
+  onClick={() => onToggleField('guests')}
+>
+  <GuestSelector
+    guests={guests}
+    setGuests={setGuests}
+    maxGuests={maxGuests}
+    onConfirm={() => onToggleField('guests')}
+  />
+</BookingField>
 
-      <BookingField
-        label="Service type"
-        value={serviceType?.name}
-        placeholder="Choose service type"
-        isOpen={activeField === 'serviceType'}
-        onClick={() => onToggleField('serviceType')}
-      >
-        <ServiceTypeSelector serviceTypes={serviceTypes} selected={serviceType} onSelect={onSelectServiceType} />
-      </BookingField>
+<BookingField
+  label="Service type"
+  icon={Utensils}
+  value={serviceType?.name}
+  placeholder="Choose service type"
+  isOpen={activeField === 'serviceType'}
+  onClick={() => onToggleField('serviceType')}
+>
+  <ServiceTypeSelector serviceTypes={serviceTypes} selected={serviceType} onSelect={onSelectServiceType} />
+</BookingField>
 
-      <BookingField
-        label="Date"
-        value={selectedDateLabel}
-        placeholder="Choose a date"
-        isOpen={activeField === 'date'}
-        onClick={() => onToggleField('date')}
-      >
-        <DateSelector
-          calendarCells={calendarCells}
-          visibleMonth={visibleMonth}
-          changeMonth={changeMonth}
-          today={today}
-          maxDate={maxDate}
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-          canGoPrevMonth={canGoPrevMonth}
-          canGoNextMonth={canGoNextMonth}
-        />
-      </BookingField>
+<BookingField
+  label="Date"
+  icon={Calendar}
+  value={selectedDateLabel}
+  placeholder="Choose a date"
+  isOpen={activeField === 'date'}
+  onClick={() => onToggleField('date')}
+>
+  <DateSelector
+    calendarCells={calendarCells}
+    visibleMonth={visibleMonth}
+    changeMonth={changeMonth}
+    today={today}
+    maxDate={maxDate}
+    selectedDate={selectedDate}
+    onSelectDate={onSelectDate}
+    canGoPrevMonth={canGoPrevMonth}
+    canGoNextMonth={canGoNextMonth}
+  />
+</BookingField>
 
-      <BookingField
-        label="Time"
-        value={time}
-        placeholder={canShowTimes ? 'Choose a time' : 'Choose location, service and date first'}
-        disabled={!canShowTimes}
-        isOpen={activeField === 'time'}
-        onClick={() => onToggleField('time')}
-      >
-        <TimeSelector timeSlots={timeSlots} time={time} onSelectTime={onSelectTime} />
-      </BookingField>
+<BookingField
+  label="Time"
+  icon={Clock}
+  value={time}
+  placeholder={canShowTimes ? 'Choose a time' : 'Choose location, service and date first'}
+  disabled={!canShowTimes}
+  isOpen={activeField === 'time'}
+  onClick={() => onToggleField('time')}
+>
+  <TimeSelector timeSlots={timeSlots} time={time} onSelectTime={onSelectTime} />
+</BookingField>
     </div>
   );
 }
@@ -567,8 +572,11 @@ function DetailsStep({ fullName, setFullName, contact, setContact, note, setNote
   return (
     <div className="flex flex-col gap-5">
       <label className="block">
-        <span className="mb-1.5 block text-xs font-medium text-black/50">Full name</span>
-       <input
+        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-black/50">
+          <User className="h-3.5 w-3.5" />
+          Full name
+        </span>
+        <input
           type="text"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
@@ -578,9 +586,12 @@ function DetailsStep({ fullName, setFullName, contact, setContact, note, setNote
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-xs font-medium text-black/50">Phone or Telegram Number</span>
+        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-black/50">
+          <Phone className="h-3.5 w-3.5" />
+          Phone or Telegram Number
+        </span>
         <input
-          type="text"
+          type="number"
           value={contact}
           onChange={(e) => setContact(e.target.value)}
           placeholder="e.g. 012 345 678 "
@@ -589,7 +600,8 @@ function DetailsStep({ fullName, setFullName, contact, setContact, note, setNote
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-xs font-medium text-black/50">
+        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-black/50">
+          <StickyNote className="h-3.5 w-3.5" />
           Note <span className="ml-1 font-normal text-black/30">optional</span>
         </span>
         <textarea
@@ -597,16 +609,15 @@ function DetailsStep({ fullName, setFullName, contact, setContact, note, setNote
           onChange={(e) => setNote(e.target.value)}
           placeholder="Allergies, special occasion, seating preference..."
           rows={4}
-          className="w-full resize-none rounded-xl border border-black/10 px-3.5 py-2.5 text-sm text-[#141414] outline-none transition-colors placeholder:text-black/30 focus:border-[#141414]"
+          className="w-full rounded-xl border border-black/10 px-3.5 py-2.5 text-base text-[#141414] outline-none transition-colors placeholder:text-black/30 focus:border-[#141414]"
         />
       </label>
     </div>
   );
 }
-
 /* ============================ BOOKING FIELD ============================ */
 
-function BookingField({ label, value, placeholder = 'Choose', onClick, disabled = false, isOpen, children }) {
+function BookingField({ label, icon: Icon, value, placeholder = 'Choose', onClick, disabled = false, isOpen, children }) {
   return (
     <>
       <div
@@ -623,7 +634,10 @@ function BookingField({ label, value, placeholder = 'Choose', onClick, disabled 
           }`}
         >
           <div className="min-w-0">
-            <span className="block text-[11px] font-semibold uppercase tracking-wide text-black/40">{label}</span>
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-black/40">
+              {Icon && <Icon className="h-3 w-3" />}
+              {label}
+            </span>
             <span className={`mt-1 block truncate text-sm font-medium ${value ? 'text-[#141414]' : 'text-black/35'}`}>
               {value || placeholder}
             </span>
