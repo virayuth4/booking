@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import StatusPoller from './StatusPoller';
+import StatusPoller from './statusPoller';
 
 async function getBooking(bookingId) {
     console.log("bookingId", bookingId)

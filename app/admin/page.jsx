@@ -60,7 +60,7 @@ function summarizeHours(hours) {
 
 
 function PageCard({ page }) {
-  const link = `ledger.app/${page.slug}`;
+  const link = `${process.env.NEXT_PUBLIC_FRONTEND}/${page.slug}`;
   const hoursSummary = summarizeHours(page.opening_hours);
   const photoCount = Array.isArray(page.image_paths) ? page.image_paths.length : 0;
 
@@ -199,7 +199,7 @@ export default function AdminHome() {
       {/* Nav */}
       <header className="sticky top-0 z-20 border-b border-black/10 bg-[#faf9f6]/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-          <span className="text-lg font-semibold tracking-tight">Ledger</span>
+          <span className="text-lg font-semibold tracking-tight">acme reserve</span>
           <div className="flex items-center gap-4">
             <span className="hidden rounded-full border border-black/10 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide text-black/45 sm:inline">
               {plan}

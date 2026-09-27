@@ -111,7 +111,7 @@
                 <span className="h-2.5 w-2.5 rounded-full bg-black/15" />
                 <span className="h-2.5 w-2.5 rounded-full bg-black/15" />
                 <span className="ml-3 font-mono text-xs text-black/40">
-                  ledger.app — Saturday, 12 Sept
+                  acmereserve.com — Saturday, 12 Sept
                 </span>
                 <span className="ml-auto font-mono text-xs text-black/30">6 booked</span>
               </div>
@@ -230,8 +230,8 @@
           {/* Footer */}
           <footer>
             <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 text-sm text-black/35 md:flex-row">
-              <span className="font-medium text-black/70">Ledger</span>
-              <span>&copy; {new Date().getFullYear()} Ledger. Made for the people who run the front of house.</span>
+              <span className="font-medium text-black/70">acme reserve</span>
+              <span>&copy; {new Date().getFullYear()} Acme reserve. Made for the people who run the front of house.</span>
             </div>
           </footer>
         </main>

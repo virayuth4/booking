@@ -137,7 +137,7 @@ export default function BookingsPage() {
       <header className="sticky top-0 z-20 border-b border-black/10 bg-[#faf9f6]/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
           <Link href="/admin" className="text-lg font-semibold tracking-tight">
-            Ledger
+            Acme Reserve
           </Link>
           <Link
             href="/admin"
@@ -154,7 +154,7 @@ export default function BookingsPage() {
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
               Bookings{pageName ? ` — ${pageName}` : ""}
             </h1>
-            <p className="mt-2 font-mono text-xs text-black/45">ledger.app/{slug}</p>
+            <p className="mt-2 font-mono text-xs text-black/45">{process.env.NEXT_PUBLIC_FRONTEND}/{slug}</p>
           </div>
           <p className="text-sm text-black/55">
             {loading || authLoading ? "Loading…" : `${bookings.length} booking${bookings.length === 1 ? "" : "s"}`}
