@@ -70,18 +70,18 @@ export default async function BookingPage({ params }) {
 
   if (!page) notFound();
 
-  const {
-    name,
-    logo_url: logoUrl,
-    image_paths: imagePaths = [],
-    phone,
-    telegram,
-    map,
-    opening_hours: openingHours,
-    sections: rawSections = [],
-    service_types: rawServiceTypes = [],
-    closed_dates: closedDates = [],
-  } = page;
+const {
+  name,
+  logo_url: logoUrl,
+  image_rows: rawImageRows = [],
+  phone,
+  telegram,
+  map,
+  opening_hours: openingHours,
+  sections: rawSections = [],
+  service_types: rawServiceTypes = [],
+  closed_dates: closedDates = [],
+} = page;
 
   // Helper to normalize strings or objects into { id, name }
   const normalizeOptions = (items) =>
@@ -101,9 +101,16 @@ export default async function BookingPage({ params }) {
   const todayKey = getTodayKey();
   const openNow = isOpenNow(openingHours);
 
-  // De-duped, logo first if no gallery images exist yet.
-  const galleryImages = imagePaths.filter((src, i, arr) => arr.indexOf(src) === i);
-  const heroImage = galleryImages[0] || logoUrl;
+  // Clean up rows: trim labels, de-dupe images within a row, drop empty rows.
+  const imageRows = (Array.isArray(rawImageRows) ? rawImageRows : [])
+    .map((row) => ({
+      label: row?.label?.trim() || "",
+      images: [...new Set(row?.image_paths ?? [])],
+    }))
+    .filter((row) => row.images.length > 0);
+
+  // Hero = first image of the first row, falling back to the logo.
+  const heroImage = imageRows[0]?.images[0] || logoUrl;
 
   const telHref = toTelHref(phone);
   const telegramHref = toTelegramHref(telegram);
@@ -187,9 +194,7 @@ export default async function BookingPage({ params }) {
         <div className="grid grid-cols-1 gap-10 pt-10 lg:grid-cols-[1fr_280px] lg:gap-12">
           {/* Primary column */}
           <div className="min-w-0 ">
-           {galleryImages.length > 0 && (
-           <GalleryCarousel images={galleryImages} name={name} />
-            )}
+        {imageRows.length > 0 && <GalleryCarousel rows={imageRows} name={name} />}
 
                 <HoursList openingHours={openingHours} todayKey={todayKey} closedDates={closedDates} />
          

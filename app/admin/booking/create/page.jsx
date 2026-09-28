@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { CATEGORIES } from "@/lib/constants";
 import { useSearchParams } from "next/navigation";
 
-const MAX_IMAGES = 10;
+const MAX_IMAGES_PER_ROW = 5;
 
 const DAYS = [
   { key: "mon", label: "Monday" },
@@ -18,8 +18,6 @@ const DAYS = [
   { key: "sun", label: "Sunday" },
 ];
 
-
-
 const DEFAULT_HOURS = {
   open: "09:00",
   close: "22:00",
@@ -27,6 +25,12 @@ const DEFAULT_HOURS = {
 
 const initialHours = () =>
   Object.fromEntries(DAYS.map(({ key }) => [key, { closed: false, ...DEFAULT_HOURS }]));
+
+// Default rows a new booking page starts with. Feel free to change/remove.
+const defaultImageRows = () => [
+  { id: crypto.randomUUID(), label: "Main", images: [] },
+  { id: crypto.randomUUID(), label: "Menu", images: [] },
+];
 
 const inputClass =
   "w-full rounded-md border border-[#D1D5DB] px-3 py-2 text-sm outline-none focus:border-[#15803D] focus:ring-1 focus:ring-[#15803D]";
@@ -72,10 +76,12 @@ export default function BookingSettings() {
   const [closedDates, setClosedDates] = useState([]);
   const [newClosedDate, setNewClosedDate] = useState("");
 
-  // Images
-  const [images, setImages] = useState([]); // { id, file, previewUrl, existing }
-  const fileInputRef = useRef(null);
-  const [imagesError, setImagesError] = useState("");
+  // Images — now a list of named rows, each with its own images (max MAX_IMAGES_PER_ROW)
+  // row shape: { id, label, images: [{ id, file, previewUrl, existing }] }
+  const [imageRows, setImageRows] = useState(defaultImageRows);
+  const [newRowLabel, setNewRowLabel] = useState("");
+  const [rowErrors, setRowErrors] = useState({}); // { [rowId]: "error text" }
+  const fileInputRefs = useRef({}); // { [rowId]: HTMLInputElement }
 
   // Page lifecycle
   const [status, setStatus] = useState("idle");
@@ -83,13 +89,15 @@ export default function BookingSettings() {
   const [pageLoading, setPageLoading] = useState(isEdit);
 
   // Revoke preview URLs only on unmount
-  const imagesRef = useRef(images);
-  imagesRef.current = images;
+  const imageRowsRef = useRef(imageRows);
+  imageRowsRef.current = imageRows;
   useEffect(() => {
     return () =>
-      imagesRef.current.forEach((img) => {
-        if (!img.existing) URL.revokeObjectURL(img.previewUrl);
-      });
+      imageRowsRef.current.forEach((row) =>
+        row.images.forEach((img) => {
+          if (!img.existing) URL.revokeObjectURL(img.previewUrl);
+        })
+      );
   }, []);
 
   // Safe polling cleanup
@@ -126,7 +134,6 @@ export default function BookingSettings() {
           `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/booking-settings/id/${pageId}`,
           { method: "GET", credentials: "include", cache: "no-store" }
         );
-        console.log("res", res)
         if (!res.ok) throw new Error("Failed to load booking settings.");
         const { data } = await res.json();
         if (cancelled || !data) return;
@@ -149,15 +156,35 @@ export default function BookingSettings() {
         }
         if (data.opening_hours) setHours(data.opening_hours);
         if (Array.isArray(data.closed_dates)) setClosedDates(data.closed_dates);
-        if (Array.isArray(data.image_paths)) {
-          setImages(
-            data.image_paths.map((url) => ({
+
+        // New shape: data.image_rows = [{ label, image_paths: [...] }]
+        if (Array.isArray(data.image_rows) && data.image_rows.length) {
+          setImageRows(
+            data.image_rows.map((row) => ({
               id: crypto.randomUUID(),
-              file: null,
-              previewUrl: url,
-              existing: true,
+              label: row.label || "Photos",
+              images: (row.image_paths || []).map((url) => ({
+                id: crypto.randomUUID(),
+                file: null,
+                previewUrl: url,
+                existing: true,
+              })),
             }))
           );
+        } else if (Array.isArray(data.image_paths) && data.image_paths.length) {
+          // Back-compat: old single flat gallery -> put everything in one row
+          setImageRows([
+            {
+              id: crypto.randomUUID(),
+              label: "Photos",
+              images: data.image_paths.map((url) => ({
+                id: crypto.randomUUID(),
+                file: null,
+                previewUrl: url,
+                existing: true,
+              })),
+            },
+          ]);
         }
       } catch (err) {
         console.error(err);
@@ -280,10 +307,8 @@ export default function BookingSettings() {
       setTelegramDeepLink(data.deepLink);
       currentSessionTokenRef.current = data.token;
 
-      // Open Telegram in a new window/app
       window.open(data.deepLink, "_blank", "noopener,noreferrer");
 
-      // Poll every 2.5 seconds for up to ~65 seconds
       let attempts = 0;
       pollTimerRef.current = setInterval(async () => {
         attempts += 1;
@@ -338,7 +363,7 @@ export default function BookingSettings() {
   };
 
   // ---------------------------------------------------------------------------
-  // Hours & Image Handlers
+  // Hours Handlers
   // ---------------------------------------------------------------------------
   const updateDay = (key, patch) =>
     setHours((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
@@ -359,38 +384,89 @@ export default function BookingSettings() {
   const removeClosedDate = (date) =>
     setClosedDates((prev) => prev.filter((d) => d !== date));
 
-  const addImageFiles = (fileList) => {
-    const incoming = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
-    if (!incoming.length) return;
-    const slots = MAX_IMAGES - images.length;
-    if (slots <= 0) {
-      setImagesError(`You can upload up to ${MAX_IMAGES} photos.`);
-      return;
-    }
-    const accepted = incoming.slice(0, slots);
-    setImagesError(
-      incoming.length > accepted.length
-        ? `Only ${slots} more photo${slots === 1 ? "" : "s"} can be added (max ${MAX_IMAGES}).`
-        : ""
-    );
-    setImages((prev) => [
+  // ---------------------------------------------------------------------------
+  // Image Row Handlers (multiple named rows, each capped at MAX_IMAGES_PER_ROW)
+  // ---------------------------------------------------------------------------
+  const setRowError = (rowId, msg) =>
+    setRowErrors((prev) => ({ ...prev, [rowId]: msg }));
+
+  const handleAddImageRow = (e) => {
+    if (e) e.preventDefault();
+    const clean = newRowLabel.trim();
+    if (!clean) return;
+    setImageRows((prev) => [
       ...prev,
-      ...accepted.map((file) => ({
-        id: crypto.randomUUID(),
-        file,
-        previewUrl: URL.createObjectURL(file),
-        existing: false,
-      })),
+      { id: crypto.randomUUID(), label: clean, images: [] },
     ]);
+    setNewRowLabel("");
   };
 
-  const removeImage = (id) => {
-    setImages((prev) => {
-      const target = prev.find((img) => img.id === id);
-      if (target && !target.existing) URL.revokeObjectURL(target.previewUrl);
-      return prev.filter((img) => img.id !== id);
+  const removeImageRow = (rowId) => {
+    setImageRows((prev) => {
+      const target = prev.find((r) => r.id === rowId);
+      target?.images.forEach((img) => {
+        if (!img.existing) URL.revokeObjectURL(img.previewUrl);
+      });
+      return prev.filter((r) => r.id !== rowId);
     });
-    setImagesError("");
+    setRowErrors((prev) => {
+      const next = { ...prev };
+      delete next[rowId];
+      return next;
+    });
+    delete fileInputRefs.current[rowId];
+  };
+
+  const updateRowLabel = (rowId, label) =>
+    setImageRows((prev) =>
+      prev.map((r) => (r.id === rowId ? { ...r, label } : r))
+    );
+
+  const addImagesToRow = (rowId, fileList) => {
+    const incoming = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    if (!incoming.length) return;
+
+    setImageRows((prev) =>
+      prev.map((row) => {
+        if (row.id !== rowId) return row;
+        const slots = MAX_IMAGES_PER_ROW - row.images.length;
+        if (slots <= 0) {
+          setRowError(rowId, `You can upload up to ${MAX_IMAGES_PER_ROW} photos in this row.`);
+          return row;
+        }
+        const accepted = incoming.slice(0, slots);
+        setRowError(
+          rowId,
+          incoming.length > accepted.length
+            ? `Only ${slots} more photo${slots === 1 ? "" : "s"} can be added (max ${MAX_IMAGES_PER_ROW}).`
+            : ""
+        );
+        return {
+          ...row,
+          images: [
+            ...row.images,
+            ...accepted.map((file) => ({
+              id: crypto.randomUUID(),
+              file,
+              previewUrl: URL.createObjectURL(file),
+              existing: false,
+            })),
+          ],
+        };
+      })
+    );
+  };
+
+  const removeImageFromRow = (rowId, imageId) => {
+    setImageRows((prev) =>
+      prev.map((row) => {
+        if (row.id !== rowId) return row;
+        const target = row.images.find((img) => img.id === imageId);
+        if (target && !target.existing) URL.revokeObjectURL(target.previewUrl);
+        return { ...row, images: row.images.filter((img) => img.id !== imageId) };
+      })
+    );
+    setRowError(rowId, "");
   };
 
   // ---------------------------------------------------------------------------
@@ -407,7 +483,6 @@ export default function BookingSettings() {
       return;
     }
 
-    
     if (!telegramChatId) {
       setError("Please connect Telegram before saving your booking page.");
       return;
@@ -432,9 +507,6 @@ export default function BookingSettings() {
       return;
     }
 
-    const existingImagePaths = images.filter((img) => img.existing).map((img) => img.previewUrl);
-    const newImageFiles = images.filter((img) => !img.existing);
-
     const form = new FormData();
     if (isEdit && pageId) form.append("id", pageId);
     form.append("name", business.name.trim());
@@ -446,11 +518,24 @@ export default function BookingSettings() {
     form.append("service_types", JSON.stringify(serviceTypes));
     form.append("hours", JSON.stringify(hours));
     form.append("closedDates", JSON.stringify(closedDates));
-    form.append("existing_image_paths", JSON.stringify(existingImagePaths));
     if (telegramChatId) {
       form.append("telegram_chat_id", telegramChatId);
     }
-    newImageFiles.forEach((img) => form.append("images", img.file));
+
+    // Image rows: send metadata (label + which existing paths stay) per row,
+    // and new files under a per-row field name so the backend can regroup them.
+    // e.g. row 0 -> field "images_row_0", row 1 -> "images_row_1", etc.
+    const imageRowsMeta = imageRows.map((row) => ({
+      label: row.label,
+      existing_image_paths: row.images.filter((img) => img.existing).map((img) => img.previewUrl),
+    }));
+    form.append("image_rows_meta", JSON.stringify(imageRowsMeta));
+
+    imageRows.forEach((row, idx) => {
+      row.images
+        .filter((img) => !img.existing)
+        .forEach((img) => form.append(`images_row_${idx}`, img.file));
+    });
 
     setStatus("saving");
     try {
@@ -491,157 +576,147 @@ export default function BookingSettings() {
 
   const currentCategoryObj = CATEGORIES.find((c) => c.key === category);
 
-return (
-  <div className="min-h-screen bg-white font-sans text-[#171717] antialiased">
-    <div className="mx-auto max-w-2xl px-6 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Booking page</h1>
-      <p className="mt-1.5 text-sm text-[#6B7280]">
-        Guests send a request. You accept or decline it in Telegram.
-      </p>
+  return (
+    <div className="min-h-screen bg-white font-sans text-[#171717] antialiased">
+      <div className="mx-auto max-w-2xl px-6 py-10">
+        <h1 className="text-2xl font-semibold tracking-tight">Booking page</h1>
+        <p className="mt-1.5 text-sm text-[#6B7280]">
+          Guests send a request. You accept or decline it in Telegram.
+        </p>
 
-      {/* Business Details */}
-      <section className="mt-10 space-y-5">
-        <h2 className="text-sm font-semibold text-[#374151]">Your business</h2>
+        {/* Business Details */}
+        <section className="mt-10 space-y-5">
+          <h2 className="text-sm font-semibold text-[#374151]">Your business</h2>
 
-        <label className="block">
-          <span className="text-sm text-[#4B5563]">Name</span>
-          <input
-            value={business.name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="e.g. Cotter & Sons Barbershop"
-            className={`mt-1.5 ${inputClass}`}
-          />
-        </label>
-
-        {/* URL Handle */}
-        <label className="block">
-          <span className="text-sm text-[#4B5563]">Booking URL link</span>
-          <div className="mt-1.5 flex items-center overflow-hidden rounded-md border border-[#D1D5DB] focus-within:border-[#15803D] focus-within:ring-1 focus-within:ring-[#15803D]">
-            <span className="select-none bg-[#F9FAFB] px-3 py-2 text-sm text-[#9CA3AF] border-r border-[#E5E7EB]">
-              eatdoko.com/
-            </span>
+          <label className="block">
+            <span className="text-sm text-[#4B5563]">Name</span>
             <input
-              type="text"
-              value={slug}
-              onChange={(e) => handleSlugChange(e.target.value)}
-              placeholder="your-page-link"
-              className="w-full px-3 py-2 text-sm font-mono text-[#171717] outline-none"
+              value={business.name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="e.g. Cotter & Sons Barbershop"
+              className={`mt-1.5 ${inputClass}`}
             />
+          </label>
+
+          <label className="block">
+            <span className="text-sm text-[#4B5563]">Booking URL link</span>
+            <div className="mt-1.5 flex items-center overflow-hidden rounded-md border border-[#D1D5DB] focus-within:border-[#15803D] focus-within:ring-1 focus-within:ring-[#15803D]">
+              <span className="select-none bg-[#F9FAFB] px-3 py-2 text-sm text-[#9CA3AF] border-r border-[#E5E7EB]">
+                eatdoko.com/
+              </span>
+              <input
+                type="text"
+                value={slug}
+                onChange={(e) => handleSlugChange(e.target.value)}
+                placeholder="your-page-link"
+                className="w-full px-3 py-2 text-sm font-mono text-[#171717] outline-none"
+              />
+            </div>
+            <p className="mt-1 text-xs text-[#9CA3AF]">
+              Auto-generated from your business name. You can customize it anytime.
+            </p>
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm text-[#4B5563]">Phone</span>
+              <input
+                type="tel"
+                value={business.phone}
+                onChange={(e) => updateBusiness("phone", e.target.value)}
+                placeholder="+855 12 345 678"
+                className={`mt-1.5 ${inputClass}`}
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm text-[#4B5563]">Telegram Handle (Public)</span>
+              <input
+                value={business.telegram}
+                onChange={(e) => updateBusiness("telegram", e.target.value)}
+                placeholder="https://t.me/yourbusiness"
+                className={`mt-1.5 ${inputClass}`}
+              />
+            </label>
           </div>
-          <p className="mt-1 text-xs text-[#9CA3AF]">
-            Auto-generated from your business name. You can customize it anytime.
-          </p>
-        </label>
 
-        <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className="text-sm text-[#4B5563]">Phone</span>
+            <span className="text-sm text-[#4B5563]">Map link</span>
             <input
-              type="tel"
-              value={business.phone}
-              onChange={(e) => updateBusiness("phone", e.target.value)}
-              placeholder="+855 12 345 678"
+              type="url"
+              value={business.map}
+              onChange={(e) => updateBusiness("map", e.target.value)}
+              placeholder="https://maps.app.goo.gl/..."
               className={`mt-1.5 ${inputClass}`}
             />
           </label>
-          <label className="block">
-            <span className="text-sm text-[#4B5563]">Telegram Handle (Public)</span>
-            <input
-              value={business.telegram}
-              onChange={(e) => updateBusiness("telegram", e.target.value)}
-              placeholder="https://t.me/yourbusiness"
-              className={`mt-1.5 ${inputClass}`}
-            />
-          </label>
-        </div>
+        </section>
 
-        <label className="block">
-          <span className="text-sm text-[#4B5563]">Map link</span>
-          <input
-            type="url"
-            value={business.map}
-            onChange={(e) => updateBusiness("map", e.target.value)}
-            placeholder="https://maps.app.goo.gl/..."
-            className={`mt-1.5 ${inputClass}`}
-          />
-        </label>
-      </section>
+        {/* Telegram Bot Connection Card */}
+        <section className="mt-10">
+          <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-[#374151]">Telegram Notifications</span>
 
-      {/* Telegram Bot Connection Card */}
-      <section className="mt-10">
-        <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-[#374151]">Telegram Notifications</span>
+                  {telegramChatId ? (
+                    <span className="inline-flex items-center rounded-full bg-[#15803D]/10 px-2.5 py-0.5 text-xs font-semibold text-[#15803D]">
+                      ● Connected
+                    </span>
+                  ) : telegramStatus === "linking" ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 animate-pulse">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                      Waiting for confirmation…
+                    </span>
+                  ) : telegramStatus === "timed_out" ? (
+                    <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-600">
+                      ✕ Connection timed out
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-[#6B7280]">
+                      ○ Not Connected
+                    </span>
+                  )}
+                </div>
 
-                {telegramChatId ? (
-                  <span className="inline-flex items-center rounded-full bg-[#15803D]/10 px-2.5 py-0.5 text-xs font-semibold text-[#15803D]">
-                    ● Connected
-                  </span>
-                ) : telegramStatus === "linking" ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 animate-pulse">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-                    Waiting for confirmation…
-                  </span>
-                ) : telegramStatus === "timed_out" ? (
-                  <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-600">
-                    ✕ Connection timed out
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-[#6B7280]">
-                    ○ Not Connected
-                  </span>
-                )}
+                <p className="mt-1 text-xs text-[#6B7280]">
+                  {telegramChatId
+                    ? "Your Telegram account is linked. New bookings will alert this chat directly."
+                    : telegramStatus === "linking"
+                    ? "Tap 'Confirm & Connect' inside the Telegram bot. Waiting for update..."
+                    : telegramStatus === "timed_out"
+                    ? "Didn't receive confirmation in time. Tap Retry to start again."
+                    : "Connect your Telegram bot to approve or decline guest booking requests."}
+                </p>
               </div>
 
-              <p className="mt-1 text-xs text-[#6B7280]">
-                {telegramChatId
-                  ? "Your Telegram account is linked. New bookings will alert this chat directly."
-                  : telegramStatus === "linking"
-                  ? "Tap 'Confirm & Connect' inside the Telegram bot. Waiting for update..."
-                  : telegramStatus === "timed_out"
-                  ? "Didn't receive confirmation in time. Tap Retry to start again."
-                  : "Connect your Telegram bot to approve or decline guest booking requests."}
-              </p>
-            </div>
-
-            {/* Telegram Actions */}
-            <div className="flex items-center gap-2 shrink-0">
-              {telegramChatId ? (
-                <button
-                  type="button"
-                  onClick={handleDisconnectTelegram}
-                  className="rounded-md border border-[#D1D5DB] bg-white px-3.5 py-1.5 text-xs font-medium text-[#6B7280] hover:border-red-300 hover:text-red-600 transition"
-                >
-                  Disconnect
-                </button>
-              ) : telegramStatus === "linking" ? (
-                <>
+              <div className="flex items-center gap-2 shrink-0">
+                {telegramChatId ? (
                   <button
                     type="button"
-                    onClick={handleReopenTelegram}
-                    className="rounded-md border border-[#D1D5DB] bg-white px-3 py-1.5 text-xs font-medium text-[#374151] hover:border-[#15803D] hover:text-[#15803D] transition"
+                    onClick={handleDisconnectTelegram}
+                    className="rounded-md border border-[#D1D5DB] bg-white px-3.5 py-1.5 text-xs font-medium text-[#6B7280] hover:border-red-300 hover:text-red-600 transition"
                   >
-                    Reopen Telegram
+                    Disconnect
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleCancelLinking}
-                    className="rounded-md border border-transparent px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : telegramStatus === "timed_out" ? (
-                <>
-                  {/* <button
-                    type="button"
-                    onClick={handleContactSupport}
-                    className="rounded-md border border-[#D1D5DB] bg-white px-3 py-1.5 text-xs font-medium text-[#374151] hover:border-gray-400 hover:text-gray-900 transition"
-                  >
-                    Contact Support
-                  </button> */}
+                ) : telegramStatus === "linking" ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleReopenTelegram}
+                      className="rounded-md border border-[#D1D5DB] bg-white px-3 py-1.5 text-xs font-medium text-[#374151] hover:border-[#15803D] hover:text-[#15803D] transition"
+                    >
+                      Reopen Telegram
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelLinking}
+                      className="rounded-md border border-transparent px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : telegramStatus === "timed_out" ? (
                   <button
                     type="button"
                     onClick={handleVerifyTelegram}
@@ -652,297 +727,355 @@ return (
                     </svg>
                     Retry Connection
                   </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleVerifyTelegram}
-                  className="inline-flex items-center gap-2 rounded-md bg-[#15803D] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[#166534] transition"
-                >
-                  <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .36z" />
-                  </svg>
-                  Verify & Connect Telegram
-                </button>
-              )}
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleVerifyTelegram}
+                    className="inline-flex items-center gap-2 rounded-md bg-[#15803D] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[#166534] transition"
+                  >
+                    <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .36z" />
+                    </svg>
+                    Verify & Connect Telegram
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Category & Services */}
-      <section className="mt-10 space-y-5">
-        <div>
-          <h2 className="text-sm font-semibold text-[#374151]">Category & Services</h2>
-          <p className="mt-0.5 text-xs text-[#6B7280]">
-            Specify the booking experiences, seating areas, or services guests can choose.
-          </p>
-        </div>
+        {/* Category & Services */}
+        <section className="mt-10 space-y-5">
+          <div>
+            <h2 className="text-sm font-semibold text-[#374151]">Category & Services</h2>
+            <p className="mt-0.5 text-xs text-[#6B7280]">
+              Specify the booking experiences, seating areas, or services guests can choose.
+            </p>
+          </div>
 
-        <label className="block">
-          <span className="text-sm text-[#4B5563]">Category</span>
-          <select
-            value={category}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className={`mt-1.5 ${inputClass} bg-white`}
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat.key} value={cat.key}>
-                {cat.label}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="block">
+            <span className="text-sm text-[#4B5563]">Category</span>
+            <select
+              value={category}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className={`mt-1.5 ${inputClass} bg-white`}
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat.key} value={cat.key}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        {/* Services & Options */}
-        <div>
-          <span className="block text-sm text-[#4B5563]">Services & Options</span>
-          <p className="mt-0.5 text-xs text-[#9CA3AF]">
-            Tap to select what guests can choose when booking.
-          </p>
+          <div>
+            <span className="block text-sm text-[#4B5563]">Services & Options</span>
+            <p className="mt-0.5 text-xs text-[#9CA3AF]">
+              Tap to select what guests can choose when booking.
+            </p>
 
-          {(() => {
-            const suggested = currentCategoryObj?.suggestedServices ?? [];
-            const allServices = [...new Set([...suggested, ...serviceTypes])];
+            {(() => {
+              const suggested = currentCategoryObj?.suggestedServices ?? [];
+              const allServices = [...new Set([...suggested, ...serviceTypes])];
 
-            if (allServices.length === 0) {
+              if (allServices.length === 0) {
+                return (
+                  <p className="mt-2.5 text-xs italic text-[#9CA3AF]">
+                    No services yet. Add one below.
+                  </p>
+                );
+              }
+
               return (
-                <p className="mt-2.5 text-xs italic text-[#9CA3AF]">
-                  No services yet. Add one below.
-                </p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {allServices.map((service) => {
+                    const isSelected = serviceTypes.includes(service);
+                    return (
+                      <button
+                        key={service}
+                        type="button"
+                        onClick={() => toggleSuggestedService(service)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                          isSelected
+                            ? "border-[#15803D] bg-[#15803D]/10 text-[#15803D]"
+                            : "border-[#E5E7EB] text-[#6B7280] hover:border-[#9CA3AF] hover:text-[#374151]"
+                        }`}
+                      >
+                        {isSelected ? "✓ " : "+ "}
+                        {service}
+                      </button>
+                    );
+                  })}
+                </div>
               );
-            }
+            })()}
+          </div>
 
-            return (
-              <div className="mt-2.5 flex flex-wrap gap-2">
-                {allServices.map((service) => {
-                  const isSelected = serviceTypes.includes(service);
-                  return (
-                    <button
-                      key={service}
-                      type="button"
-                      onClick={() => toggleSuggestedService(service)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                        isSelected
-                          ? "border-[#15803D] bg-[#15803D]/10 text-[#15803D]"
-                          : "border-[#E5E7EB] text-[#6B7280] hover:border-[#9CA3AF] hover:text-[#374151]"
-                      }`}
-                    >
-                      {isSelected ? "✓ " : "+ "}
-                      {service}
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </div>
+          <div>
+            <span className="block text-xs font-medium text-[#4B5563]">Add custom service</span>
+            <div className="mt-1.5 flex gap-2">
+              <input
+                type="text"
+                value={customServiceInput}
+                onChange={(e) => setCustomServiceInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddCustomService();
+                  }
+                }}
+                placeholder="e.g. VIP Booth, Hair Coloring, Balcony"
+                className={inputClass}
+              />
+              <button
+                type="button"
+                onClick={handleAddCustomService}
+                className="shrink-0 rounded-md border border-[#D1D5DB] px-4 text-sm font-medium text-[#374151] hover:border-[#15803D] hover:text-[#15803D]"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </section>
 
-        {/* Add Custom Service Input */}
-        <div>
-          <span className="block text-xs font-medium text-[#4B5563]">Add custom service</span>
-          <div className="mt-1.5 flex gap-2">
+        {/* Opening Hours */}
+        <section className="mt-10">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold text-[#374151]">Opening hours</h2>
+            <button
+              type="button"
+              onClick={copyMondayToAll}
+              className="text-xs font-medium text-[#6B7280] hover:text-[#15803D]"
+            >
+              Copy Monday to all
+            </button>
+          </div>
+
+          <div className="mt-3 divide-y divide-[#F0F0F1] rounded-md border border-[#E5E7EB]">
+            {DAYS.map(({ key, label }) => {
+              const day = hours[key];
+              return (
+                <div key={key} className="flex items-center gap-3 px-4 py-3">
+                  <span className="w-24 shrink-0 text-sm text-[#374151]">{label}</span>
+
+                  {day.closed ? (
+                    <span className="flex-1 text-sm text-[#9CA3AF]">Closed</span>
+                  ) : (
+                    <div className="flex flex-1 items-center gap-2">
+                      <input
+                        type="time"
+                        value={day.open}
+                        onChange={(e) => updateDay(key, { open: e.target.value })}
+                        aria-label={`${label} opens`}
+                        className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
+                      />
+                      <span className="text-[#9CA3AF]">–</span>
+                      <input
+                        type="time"
+                        value={day.close}
+                        onChange={(e) => updateDay(key, { close: e.target.value })}
+                        aria-label={`${label} closes`}
+                        className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
+                      />
+                    </div>
+                  )}
+
+                  <label className="flex shrink-0 items-center gap-2 text-xs text-[#4B5563]">
+                    <input
+                      type="checkbox"
+                      checked={day.closed}
+                      onChange={(e) => updateDay(key, { closed: e.target.checked })}
+                      className="h-4 w-4 accent-[#15803D]"
+                    />
+                    Closed
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Closed Dates */}
+        <section className="mt-10">
+          <h2 className="text-sm font-semibold text-[#374151]">Closed dates</h2>
+          <p className="mt-1 text-xs text-[#9CA3AF]">Holidays or specific days you will not accept bookings.</p>
+
+          <div className="mt-3 flex gap-2">
             <input
-              type="text"
-              value={customServiceInput}
-              onChange={(e) => setCustomServiceInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddCustomService();
-                }
-              }}
-              placeholder="e.g. VIP Booth, Hair Coloring, Balcony"
-              className={inputClass}
+              type="date"
+              value={newClosedDate}
+              onChange={(e) => setNewClosedDate(e.target.value)}
+              className="rounded-md border border-[#D1D5DB] px-3 py-2 text-sm outline-none focus:border-[#15803D]"
             />
             <button
               type="button"
-              onClick={handleAddCustomService}
-              className="shrink-0 rounded-md border border-[#D1D5DB] px-4 text-sm font-medium text-[#374151] hover:border-[#15803D] hover:text-[#15803D]"
+              onClick={addClosedDate}
+              className="rounded-md border border-[#D1D5DB] px-4 text-sm font-medium text-[#374151] hover:border-[#9CA3AF]"
             >
               Add
             </button>
           </div>
-        </div>
-      </section>
 
-      {/* Opening Hours */}
-      <section className="mt-10">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-[#374151]">Opening hours</h2>
-          <button
-            type="button"
-            onClick={copyMondayToAll}
-            className="text-xs font-medium text-[#6B7280] hover:text-[#15803D]"
-          >
-            Copy Monday to all
-          </button>
-        </div>
+          {closedDates.length > 0 && (
+            <ul className="mt-3 divide-y divide-[#F0F0F1] rounded-md border border-[#E5E7EB]">
+              {closedDates.map((date) => (
+                <li key={date} className="flex items-center justify-between px-4 py-2 text-sm">
+                  <span className="font-mono text-[#4B5563]">{date}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeClosedDate(date)}
+                    className="text-xs text-[#9CA3AF] hover:text-[#15803D]"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-        <div className="mt-3 divide-y divide-[#F0F0F1] rounded-md border border-[#E5E7EB]">
-          {DAYS.map(({ key, label }) => {
-            const day = hours[key];
-            return (
-              <div key={key} className="flex items-center gap-3 px-4 py-3">
-                <span className="w-24 shrink-0 text-sm text-[#374151]">{label}</span>
+        {/* Photo Rows — each row is a named gallery, capped at MAX_IMAGES_PER_ROW */}
+        <section className="mt-10">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold text-[#374151]">Photos</h2>
+            <span className="text-xs text-[#9CA3AF]">Up to {MAX_IMAGES_PER_ROW} per row</span>
+          </div>
+          <p className="mt-1 text-xs text-[#9CA3AF]">
+            Group your photos under headers guests will see, like "Seatings" or "Menu".
+          </p>
 
-                {day.closed ? (
-                  <span className="flex-1 text-sm text-[#9CA3AF]">Closed</span>
-                ) : (
-                  <div className="flex flex-1 items-center gap-2">
-                    <input
-                      type="time"
-                      value={day.open}
-                      onChange={(e) => updateDay(key, { open: e.target.value })}
-                      aria-label={`${label} opens`}
-                      className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
-                    />
-                    <span className="text-[#9CA3AF]">–</span>
-                    <input
-                      type="time"
-                      value={day.close}
-                      onChange={(e) => updateDay(key, { close: e.target.value })}
-                      aria-label={`${label} closes`}
-                      className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
-                    />
+          <div className="mt-4 space-y-6">
+            {imageRows.map((row) => (
+              <div key={row.id} className="rounded-md border border-[#E5E7EB] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <input
+                    value={row.label}
+                    onChange={(e) => updateRowLabel(row.id, e.target.value)}
+                    placeholder="Row name, e.g. Seatings"
+                    className="w-full max-w-xs rounded-md border border-transparent px-1 py-1 text-sm font-medium text-[#171717] outline-none hover:border-[#D1D5DB] focus:border-[#15803D]"
+                  />
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="text-xs text-[#9CA3AF]">
+                      {row.images.length}/{MAX_IMAGES_PER_ROW}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeImageRow(row.id)}
+                      className="text-xs font-medium text-[#9CA3AF] hover:text-red-600"
+                    >
+                      Remove row
+                    </button>
                   </div>
+                </div>
+
+                <div
+                  onClick={() =>
+                    row.images.length < MAX_IMAGES_PER_ROW && fileInputRefs.current[row.id]?.click()
+                  }
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    addImagesToRow(row.id, e.dataTransfer.files);
+                  }}
+                  className={`mt-3 flex flex-col items-center justify-center rounded-md border-2 border-dashed px-4 py-6 text-center text-sm transition ${
+                    row.images.length >= MAX_IMAGES_PER_ROW
+                      ? "cursor-not-allowed border-[#E5E7EB] text-[#9CA3AF]"
+                      : "cursor-pointer border-[#D1D5DB] text-[#4B5563] hover:border-[#9CA3AF]"
+                  }`}
+                >
+                  {row.images.length >= MAX_IMAGES_PER_ROW ? (
+                    <span>Maximum of {MAX_IMAGES_PER_ROW} photos reached</span>
+                  ) : (
+                    <>
+                      <span className="font-medium text-[#171717]">Click to upload</span>
+                      <span className="mt-1 text-xs text-[#9CA3AF]">or drag and drop · PNG, JPG, WEBP</span>
+                    </>
+                  )}
+                  <input
+                    ref={(el) => {
+                      fileInputRefs.current[row.id] = el;
+                    }}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      if (e.target.files?.length) addImagesToRow(row.id, e.target.files);
+                      e.target.value = "";
+                    }}
+                    className="hidden"
+                  />
+                </div>
+
+                {rowErrors[row.id] && (
+                  <p className="mt-2 text-xs text-red-600">{rowErrors[row.id]}</p>
                 )}
 
-                <label className="flex shrink-0 items-center gap-2 text-xs text-[#4B5563]">
-                  <input
-                    type="checkbox"
-                    checked={day.closed}
-                    onChange={(e) => updateDay(key, { closed: e.target.checked })}
-                    className="h-4 w-4 accent-[#15803D]"
-                  />
-                  Closed
-                </label>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Closed Dates */}
-      <section className="mt-10">
-        <h2 className="text-sm font-semibold text-[#374151]">Closed dates</h2>
-        <p className="mt-1 text-xs text-[#9CA3AF]">Holidays or specific days you will not accept bookings.</p>
-
-        <div className="mt-3 flex gap-2">
-          <input
-            type="date"
-            value={newClosedDate}
-            onChange={(e) => setNewClosedDate(e.target.value)}
-            className="rounded-md border border-[#D1D5DB] px-3 py-2 text-sm outline-none focus:border-[#15803D]"
-          />
-          <button
-            type="button"
-            onClick={addClosedDate}
-            className="rounded-md border border-[#D1D5DB] px-4 text-sm font-medium text-[#374151] hover:border-[#9CA3AF]"
-          >
-            Add
-          </button>
-        </div>
-
-        {closedDates.length > 0 && (
-          <ul className="mt-3 divide-y divide-[#F0F0F1] rounded-md border border-[#E5E7EB]">
-            {closedDates.map((date) => (
-              <li key={date} className="flex items-center justify-between px-4 py-2 text-sm">
-                <span className="font-mono text-[#4B5563]">{date}</span>
-                <button
-                  type="button"
-                  onClick={() => removeClosedDate(date)}
-                  className="text-xs text-[#9CA3AF] hover:text-[#15803D]"
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Gallery Photos */}
-      <section className="mt-10">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-[#374151]">Photos</h2>
-          <span className="text-xs text-[#9CA3AF]">
-            {images.length}/{MAX_IMAGES}
-          </span>
-        </div>
-
-        <div
-          onClick={() => images.length < MAX_IMAGES && fileInputRef.current?.click()}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            addImageFiles(e.dataTransfer.files);
-          }}
-          className={`mt-3 flex flex-col items-center justify-center rounded-md border-2 border-dashed px-4 py-8 text-center text-sm transition ${
-            images.length >= MAX_IMAGES
-              ? "cursor-not-allowed border-[#E5E7EB] text-[#9CA3AF]"
-              : "cursor-pointer border-[#D1D5DB] text-[#4B5563] hover:border-[#9CA3AF]"
-          }`}
-        >
-          {images.length >= MAX_IMAGES ? (
-            <span>Maximum of {MAX_IMAGES} photos reached</span>
-          ) : (
-            <>
-              <span className="font-medium text-[#171717]">Click to upload</span>
-              <span className="mt-1 text-xs text-[#9CA3AF]">or drag and drop · PNG, JPG, WEBP</span>
-            </>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => {
-              if (e.target.files?.length) addImageFiles(e.target.files);
-              e.target.value = "";
-            }}
-            className="hidden"
-          />
-        </div>
-
-        {imagesError && <p className="mt-2 text-xs text-red-600">{imagesError}</p>}
-
-        {images.length > 0 && (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {images.map((img) => (
-              <div key={img.id} className="group relative aspect-square overflow-hidden rounded-md border border-[#E5E7EB]">
-                <img src={img.previewUrl} alt="Upload preview" className="h-full w-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => removeImage(img.id)}
-                  aria-label="Remove photo"
-                  className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition group-hover:opacity-100"
-                >
-                  ✕
-                </button>
+                {row.images.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {row.images.map((img) => (
+                      <div
+                        key={img.id}
+                        className="group relative aspect-square overflow-hidden rounded-md border border-[#E5E7EB]"
+                      >
+                        <img src={img.previewUrl} alt="Upload preview" className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImageFromRow(row.id, img.id)}
+                          aria-label="Remove photo"
+                          className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition group-hover:opacity-100"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
+
+          {/* Add new row */}
+          <div className="mt-4 flex gap-2">
+            <input
+              type="text"
+              value={newRowLabel}
+              onChange={(e) => setNewRowLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddImageRow();
+                }
+              }}
+              placeholder="New row name, e.g. Exterior"
+              className={inputClass}
+            />
+            <button
+              type="button"
+              onClick={handleAddImageRow}
+              className="shrink-0 rounded-md border border-[#D1D5DB] px-4 text-sm font-medium text-[#374151] hover:border-[#15803D] hover:text-[#15803D]"
+            >
+              Add row
+            </button>
+          </div>
+        </section>
+
+        {/* Save Bar */}
+        <div className="mt-12 flex items-center justify-between border-t border-[#E5E7EB] pt-6">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={status === "saving"}
+            className="rounded-md bg-[#15803D] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#166534] disabled:opacity-50"
+          >
+            {status === "saving" ? "Saving…" : "Save"}
+          </button>
+        </div>
+
+        {status === "saved" && (
+          <p className="mt-3 text-right text-sm text-[#15803D]">Saved successfully.</p>
         )}
-      </section>
-
-      {/* Save Bar */}
-      <div className="mt-12 flex items-center justify-between border-t border-[#E5E7EB] pt-6">
-        <p className="text-sm text-red-600">{error}</p>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={status === "saving"}
-          className="rounded-md bg-[#15803D] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#166534] disabled:opacity-50"
-        >
-          {status === "saving" ? "Saving…" : "Save"}
-        </button>
       </div>
-
-      {status === "saved" && (
-        <p className="mt-3 text-right text-sm text-[#15803D]">Saved successfully.</p>
-      )}
     </div>
-  </div>
-);
+  );
 }
