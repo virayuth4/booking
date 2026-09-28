@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { AuthContext, useAuth } from '../auth/authContext';
 import { ClockIcon, XIcon, User, Phone, StickyNote, Users, Calendar, Clock, Utensils, MapPin } from 'lucide-react';
 import BookingTelegramNotify from './bookingTelegramNotify';
+import { useWriteAccessGate } from './useWriteAccessGate';
 
 
 
@@ -61,13 +62,18 @@ async function defaultGetAvailableTimes(section, dateKey, serviceType, pageId) {
   if (section?.id) params.set('sectionId', section.id);
   if (serviceType?.id) params.set('serviceTypeId', serviceType.id);
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/booking/availability?${params}`);
-  if (!res.ok) return [];
-
-  const { slots } = await res.json();
-  return slots;
+  const url = `/api/booking-link/booking/availability?${params}`;
+  try {
+   const res = await fetch(`/api/booking-link/booking/availability?${params}`);
+    const text = await res.text();
+    console.log('availability', res.status, url, text.slice(0, 200));
+    if (!res.ok) return [];
+    return JSON.parse(text).slots ?? [];
+  } catch (err) {
+    console.error('availability error', url, err);
+    return [];
+  }
 }
-
 /**
  * Always-visible, embedded booking widget — not a modal. Meant to be
  * dropped directly into a page (e.g. below an hours section) with a
@@ -135,6 +141,7 @@ useEffect(() => {
   const [contact, setContact] = useState('');
   const [note, setNote] = useState('');
   const [bookingId, setBookingId] = useState(null);
+  const [telegramReady, setTelegramReady] = useState(false);
 
 
   const [visibleMonth, setVisibleMonth] = useState(() => {
@@ -146,6 +153,8 @@ useEffect(() => {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
   const [timeSlots, setTimeSlots] = useState([]);
+  const [needsTelegramPermission, setNeedsTelegramPermission] = useState(false);
+
 
 
 
@@ -187,7 +196,24 @@ useEffect(() => {
 }, [canShowTimes, section, selectedDate, serviceType, getAvailableTimes, pageId]);
 
 
+function getTelegramWebApp() {
+  if (typeof window === 'undefined') return null;
+  const tg = window.Telegram?.WebApp;
+  // initData is an empty string when the page is opened outside Telegram
+  return tg?.initData ? tg : null;
+}
 
+function requestTelegramWriteAccess(tg) {
+  return new Promise((resolve) => {
+    if (tg.initDataUnsafe?.user?.allows_write_to_pm) return resolve(true);
+    if (!tg.isVersionAtLeast?.('6.9') || !tg.requestWriteAccess) return resolve(false);
+    try {
+      tg.requestWriteAccess((allowed) => resolve(Boolean(allowed)));
+    } catch {
+      resolve(false);
+    }
+  });
+}
 
   const canGoPrevMonth =
     visibleMonth.year > today.getFullYear() ||
@@ -226,9 +252,11 @@ const bookingComplete = Boolean(
     setStep(2);
   }
 
-  function backToBooking() {
-    setStep(1);
-  }
+ function backToBooking() {
+  setStep(1);
+  setNeedsTelegramPermission(false);
+  setError(null);
+}
 
 function startOver() {
     setStep(1);
@@ -244,21 +272,21 @@ function startOver() {
     setSubmitting(false);
     setSubmitted(false);
     setError(null);
+    setNeedsTelegramPermission(false);
   }
 
-async function handleConfirmBooking() {
-  if (!bookingComplete || !contactComplete) return;
-
+// Does the actual API call. Only runs once permission is settled.
+async function submitBooking(tg, writeAllowed) {
   setSubmitting(true);
   setError(null);
 
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/booking/create`, {
+    const res = await fetch(`/api/booking-link/booking/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         pageId,
-        anonId: anonId,
+        anonId,
         sectionId: section?.id ?? null,
         serviceTypeId: serviceType?.id ?? null,
         guests,
@@ -267,10 +295,10 @@ async function handleConfirmBooking() {
         fullName: fullName.trim(),
         contact: contact.trim(),
         note: note.trim(),
+        telegramInitData: tg?.initData ?? null,
+        telegramWriteAccess: writeAllowed,
       }),
     });
-
-    console.log('booking/create status:', res.status);
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -278,14 +306,7 @@ async function handleConfirmBooking() {
       throw new Error(body.error || 'Request failed');
     }
 
-    let data;
-    try {
-      data = await res.json();
-    } catch (parseErr) {
-      console.error('booking/create succeeded but response body was not valid JSON', parseErr);
-      // The booking almost certainly exists server-side at this point.
-      throw new Error('Booking may have been created, but we couldn\'t confirm it. Please check "My booking."');
-    }
+    const data = await res.json();
 
     const bookingRecord = {
       id: data.booking?.id ?? null,
@@ -302,7 +323,7 @@ async function handleConfirmBooking() {
       contact: contact.trim(),
       note: note.trim(),
       createdAt: new Date().toISOString(),
-      ...data.booking, // backend fields win if there's overlap
+      ...data.booking,
     };
 
     saveBookingToStorage(bookingRecord);
@@ -312,19 +333,61 @@ async function handleConfirmBooking() {
       try {
         await onConfirm(data.booking);
       } catch (onConfirmErr) {
-        // Don't let a failure in this optional callback hide a successful booking.
         console.error('onConfirm callback threw:', onConfirmErr);
       }
     }
 
+    setTelegramReady(Boolean(tg) && writeAllowed);
     setSubmitted(true);
   } catch (err) {
-    console.error('handleConfirmBooking error:', err);
+    console.error('submitBooking error:', err);
     setError(err.message || 'Something went wrong. Please try again.');
   } finally {
     setSubmitting(false);
   }
 }
+
+// "Confirm booking" button
+async function handleConfirmBooking() {
+  if (!bookingComplete || !contactComplete) return;
+  setError(null);
+
+  const tg = getTelegramWebApp();
+
+  // Not inside Telegram: nothing to ask, just submit.
+  if (!tg) return submitBooking(null, false);
+
+  const allowed = await requestTelegramWriteAccess(tg);
+  if (!allowed) {
+    // Do NOT submit. Show the "Allow notifications" button instead.
+    setNeedsTelegramPermission(true);
+    setError('Please allow notifications so we can confirm your booking on Telegram.');
+    return;
+  }
+
+  return submitBooking(tg, true);
+}
+
+// "Allow notifications" button (shown after a denial)
+async function handleAllowNotifications() {
+  const tg = getTelegramWebApp();
+  if (!tg) {
+    setNeedsTelegramPermission(false);
+    return;
+  }
+
+  setError(null);
+  const allowed = await requestTelegramWriteAccess(tg);
+  if (!allowed) {
+    setError('Notifications are still blocked. Tap "Allow notifications" and choose OK.');
+    return;
+  }
+
+  setNeedsTelegramPermission(false);
+  await submitBooking(tg, true);
+}
+
+
   const formattedDate = selectedDate
     ? selectedDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
     : null;
@@ -345,13 +408,14 @@ return (
 
         <div className="px-5 py-5">
           {submitted ? (
-           <PendingPanel
+         <PendingPanel
             guests={guests}
             date={selectedDate}
             section={section}
             serviceType={serviceType}
             time={time}
             bookingId={bookingId}
+            telegramReady={telegramReady}
             telegramBotUsername={process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME}
             onDone={startOver}
           />
@@ -421,26 +485,42 @@ return (
                 Continue
               </button>
             ) : (
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={backToBooking}
-                  className="shrink-0 rounded-full border border-black/10 px-5 py-3 text-sm font-medium text-black/60 transition hover:border-black/20 hover:text-black"
-                >
-                  Back
-                </button>
-                <div className="flex-1">
-                  {error && <p className="mb-2 text-xs font-medium text-red-600">{error}</p>}
-                  <button
-                    type="button"
-                    disabled={!contactComplete}
-                    onClick={handleConfirmBooking}
-                    className="w-full rounded-full bg-[#141414] px-5 py-3 text-sm font-medium text-[#faf9f6] transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Confirm booking
-                  </button>
-                </div>
-              </div>
+             <div className="flex flex-col gap-2">
+  <div className="flex items-center gap-3">
+    <button
+      type="button"
+      onClick={backToBooking}
+      className="shrink-0 rounded-full border border-black/10 px-5 py-3 text-sm font-medium text-black/60 transition hover:border-black/20 hover:text-black"
+    >
+      Back
+    </button>
+
+    <div className="flex-1">
+      {needsTelegramPermission ? (
+        <button
+          type="button"
+          onClick={handleAllowNotifications}
+          className="w-full rounded-full bg-[#229ED9] px-5 py-3 text-sm font-medium text-white transition hover:opacity-90"
+        >
+          Allow notifications 
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={!contactComplete}
+          onClick={handleConfirmBooking}
+          className="w-full rounded-full bg-[#141414] px-5 py-3 text-sm font-medium text-[#faf9f6] transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Confirm booking
+        </button>
+      )}
+    </div>
+  </div>
+
+  {error && (
+    <p className="text-center text-xs font-medium text-red-600">{error}</p>
+  )}
+</div>
             )}
           </div>
         )}
@@ -950,8 +1030,9 @@ function SuccessPanel({ guests, date, section, serviceType, time, onDone }) {
 }
 
 
-function PendingPanel({ guests, date, section, serviceType, time, bookingId, telegramBotUsername, onDone }) {
+function PendingPanel({ guests, date, section, serviceType, time, bookingId, telegramReady, telegramBotUsername, onDone }) {
   const [notifyRequested, setNotifyRequested] = useState(false);
+  const linked = telegramReady || notifyRequested;
 
   const handleNotify = () => {
     // Deep link with the booking id as the /start payload — the bot picks
@@ -983,22 +1064,11 @@ function PendingPanel({ guests, date, section, serviceType, time, bookingId, tel
         </p>
       </div>
 
-    {notifyRequested ? (
   <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-600">
     <CheckIcon className="h-4 w-4" />
     We&apos;ll message you on Telegram once it&apos;s confirmed
   </p>
-) : (
-  <div className="flex flex-col items-center gap-2">
-    <BookingTelegramNotify
-      telegramBotUsername={process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME}
-      onConnected={(chatId) => console.log("linked:", chatId)}
-    />
-    <p className="max-w-xs text-xs text-black/40">
-      This only sends updates about this booking — no other messages.
-    </p>
-  </div>
-)}
+
 
       <button
         type="button"

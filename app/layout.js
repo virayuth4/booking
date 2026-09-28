@@ -45,18 +45,16 @@ export default function RootLayout({ children }) {
       className={`${googleSans.variable} ${inter.variable} ${mono.variable} h-full antialiased`}
     >
       <head>
-        <link rel="preconnect" href="https://apis.google.com" />
-        <link rel="preconnect" href="https://accounts.google.com" />
-        <link rel="preconnect" href="https://rielpoint.firebaseapp.com" />
-        <link rel="dns-prefetch" href="https://apis.google.com" />
-        <link rel="dns-prefetch" href="https://accounts.google.com" />
-        <link rel="dns-prefetch" href="https://rielpoint.firebaseapp.com" />
+         <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
+        />
       </head>
       <body className="min-h-full flex flex-col font-sans">
         <AuthProvider>
                 <ConditionalNavigation/>
             {/* <TopNavigation/> */}
-            <main className="flex-1 pb-62.5">{children}</main>
+            <main className="flex-1 ">{children}</main>
             <Analytics />
         
         </AuthProvider>

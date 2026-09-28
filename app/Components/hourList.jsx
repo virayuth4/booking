@@ -13,7 +13,7 @@ function to12Hour(time) {
 }
 
 export default function HoursList({ openingHours, todayKey, closedDates = [] }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const today = openingHours?.[todayKey];
 
   return (
