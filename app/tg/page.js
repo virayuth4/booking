@@ -8,9 +8,21 @@ export default function TelegramEntry() {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    const slug = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
-    if (slug) router.replace(`/${slug}/book`);
-    else setFailed(true);
+    let tries = 0;
+    const id = setInterval(() => {
+      tries += 1;
+      const tg = window.Telegram?.WebApp;
+      const slug = tg?.initDataUnsafe?.start_param;
+
+      if (tg?.initData && slug) {
+        clearInterval(id);
+        router.replace(`/${encodeURIComponent(slug)}/book`);
+      } else if (tries >= 15) {
+        clearInterval(id);
+        setFailed(true);
+      }
+    }, 100);
+    return () => clearInterval(id);
   }, [router]);
 
   return (

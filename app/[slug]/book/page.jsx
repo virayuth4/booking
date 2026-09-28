@@ -10,6 +10,8 @@ import {
   isOpenNow,
 } from "@/lib/bookingPage";
 import TelegramInit from "@/app/Components/telegramInit";
+import TelegramBookingSwitch from "@/app/Components/telegramBookingSwitch";
+import { BookingFooter } from "@/app/Components/bookingFooter";
 
 export default async function BookPage({ params }) {
   const { slug } = await params;
@@ -33,6 +35,7 @@ export default async function BookPage({ params }) {
   const todayKey = getTodayKey();
   const todayHours = openingHours?.[todayKey];
   const openNow = isOpenNow(openingHours);
+  
 
   // Clean up rows: trim labels, de-dupe images within a row, drop empty rows.
   const imageRows = (Array.isArray(rawImageRows) ? rawImageRows : [])
@@ -50,7 +53,7 @@ export default async function BookPage({ params }) {
       <TelegramInit />
 
       {/* Compact hero (no action buttons: the user is already booking) */}
-      <header className="relative flex min-h-[30vh] w-full flex-col justify-end overflow-hidden bg-[#141414]">
+      <header className="relative flex min-h-[30vh] md:min-h-[75vh] w-full flex-col justify-end overflow-hidden bg-[#141414]">
         {heroImage && (
           <img
             src={heroImage}
@@ -76,6 +79,8 @@ export default async function BookPage({ params }) {
       </header>
 
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-5 pt-10 sm:px-6">
+          <TelegramBookingSwitch slug={slug} name={name}>
+
         <BookingSection
           pageId={page.id}
           placeName={name}
@@ -84,7 +89,7 @@ export default async function BookPage({ params }) {
           openingHours={openingHours}
           maxDaysAhead={page.max_days_ahead ?? 60}
         />
-
+        </TelegramBookingSwitch>
         {imageRows.length > 0 && <GalleryCarousel rows={imageRows} name={name} />}
 
         <HoursList
@@ -92,6 +97,11 @@ export default async function BookPage({ params }) {
           todayKey={todayKey}
           closedDates={closedDates}
         />
+
+                <div className='pb-10'>
+                      <BookingFooter/>
+                </div>
+      
       </div>
     </main>
   );

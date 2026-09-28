@@ -1042,38 +1042,76 @@ function PendingPanel({ guests, date, section, serviceType, time, bookingId, tel
     setNotifyRequested(true);
   };
 
+  const rows = [
+    date && {
+      label: 'Date',
+      value: date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }),
+    },
+    time && { label: 'Time', value: time },
+    { label: 'Party size', value: `${guests} ${guests === 1 ? 'guest' : 'guests'}` },
+    section?.name && { label: 'Area', value: section.name },
+    serviceType?.name && { label: 'Service', value: serviceType.name },
+  ].filter(Boolean);
+
   return (
-    <div className="flex flex-col items-center gap-4 py-8 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-50">
-        <ClockIcon className="h-6 w-6 text-amber-600" />
+    <div className="flex flex-col gap-6 py-6">
+      {/* Status */}
+      <div className="flex items-start gap-3">
+        <div className="relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-50">
+          <ClockIcon className="h-5 w-5 text-amber-600" />
+          <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60 motion-reduce:animate-none" />
+            <span className="relative inline-flex h-3 w-3 rounded-full border-2 border-white bg-amber-500" />
+          </span>
+        </div>
+        <div>
+          <h2 className="text-base font-semibold text-[#141414]">Waiting for the venue to confirm</h2>
+          <p className="mt-1 text-sm leading-6 text-black/55">
+            Your table isn&apos;t reserved until they accept. This usually doesn&apos;t take long.
+          </p>
+        </div>
       </div>
 
-      <div>
-        <p className="text-sm font-semibold text-[#141414]">Booking pending</p>
-        <p className="mt-2 text-sm leading-6 text-black/50">
-          {guests} {guests === 1 ? 'guest' : 'guests'} · {section?.name} · {serviceType?.name} · {time}
-          {date && (
-            <>
-              {' '}
-              on {date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-            </>
-          )}
-        </p>
-        <p className="mt-1 text-xs text-black/40">
-          Waiting for the venue to confirm your table.
-        </p>
-      </div>
+      {/* Booking summary */}
+      <dl className="divide-y divide-black/5 rounded-xl border border-black/10 px-4">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-baseline justify-between gap-4 py-3">
+            <dt className="text-sm text-black/45">{row.label}</dt>
+            <dd className="text-right text-sm font-medium text-[#141414]">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
 
-  <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-600">
-    <CheckIcon className="h-4 w-4" />
-    We&apos;ll message you on Telegram once it&apos;s confirmed
-  </p>
-
+      {/* Notifications */}
+      {linked ? (
+        <div className="flex items-start gap-3 rounded-xl bg-emerald-50 px-4 py-3">
+          <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+          <p className="text-sm leading-6 text-emerald-800">
+            Telegram is connected. We&apos;ll message you as soon as the venue responds.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 rounded-xl bg-black/[0.03] px-4 py-4">
+          <p className="text-sm leading-6 text-black/60">
+            Don&apos;t want to keep this page open? Get the venue&apos;s answer on Telegram instead.
+          </p>
+          <button
+            type="button"
+            onClick={handleNotify}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#141414]"
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+              <path d="M21.9 4.3 18.6 20c-.2 1-.9 1.3-1.7.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.3-4.9 9-8.1c.4-.3-.1-.5-.6-.2L5.4 13.8.7 12.3c-1-.3-1-1 .2-1.5L20.400 3.700c.9-.3 1.700.2 1.500.6Z" />
+            </svg>
+            Get updates on Telegram
+          </button>
+        </div>
+      )}
 
       <button
         type="button"
         onClick={onDone}
-        className="mt-1 underline px-5 py-3 text-sm font-medium text-[#141414] "
+        className="self-center rounded-md px-3 py-2 text-sm font-medium text-black/60 underline underline-offset-4 transition-colors hover:text-[#141414] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#141414]"
       >
         Make another booking
       </button>
