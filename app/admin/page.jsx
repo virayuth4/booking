@@ -270,7 +270,7 @@ export default function AdminHome() {
         </section>
 
         {/* Analytics */}
-        <section className="mt-10">
+        {/* <section className="mt-10">
           <h2 className="text-lg font-medium">Analytics</h2>
           <div className="mt-5 grid gap-px overflow-hidden rounded-xl border border-black/10 bg-black/10 sm:grid-cols-3">
             {stats.map((s) => (
@@ -301,7 +301,7 @@ export default function AdminHome() {
               ))}
             </ul>
           </div>
-        </section>
+        </section> */}
       </div>
     </main>
   );

@@ -9,7 +9,7 @@ export default function TelegramEntry() {
 
   useEffect(() => {
     const slug = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
-    if (slug) router.replace(`/${slug}?booking=true`);
+    if (slug) router.replace(`/${slug}/book`);
     else setFailed(true);
   }, [router]);
 

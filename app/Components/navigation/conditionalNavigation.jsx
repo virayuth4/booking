@@ -14,8 +14,11 @@ export default function ConditionalNavigation() {
 
   const isAllowedPage = ALLOWED_TOP_LEVEL_PATHS.includes(segments[0]);
 
-  // Don't render navigation on /[slug] booking pages
-  const isBookingPage = pathname !== "/" && segments.length === 1 && !isAllowedPage;
+  // Hide navigation on /[slug] and /[slug]/book
+  const isBookingPage =
+    !isAllowedPage &&
+    (segments.length === 1 ||
+      (segments.length === 2 && segments[1] === "book"));
 
   // Don't render navigation anywhere under /admin
   const isAdminPage = segments[0] === "admin";

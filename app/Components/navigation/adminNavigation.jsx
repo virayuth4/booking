@@ -38,6 +38,13 @@ export default function AdminHeader({ currentUser, plan, onLogout }) {
     router.push('/#pricing');
   }
 
+      function handleDemo() {
+    setIsMenuOpen(false);
+    router.push('/cincin-pizzaria-demo');
+  }
+
+
+
 
   function handleLogout() {
     setIsMenuOpen(false);
@@ -86,6 +93,13 @@ export default function AdminHeader({ currentUser, plan, onLogout }) {
               className="w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-black/80 transition hover:bg-black/5"
             >
               Home
+            </button>
+            <button
+              type="button"
+              onClick={handleDemo}
+              className="w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-black/80 transition hover:bg-black/5"
+            >
+              Demo
             </button>
              <button
               type="button"
