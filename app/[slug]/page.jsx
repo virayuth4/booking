@@ -128,7 +128,7 @@ export default async function BookingPage({ params, searchParams }) {
   return (
     <main
         className={`relative min-h-dvh w-full bg-white font-sans text-[#141414] antialiased ${
-          isMiniApp ? "pb-0" : "pb-24 md:pb-0"
+          isMiniApp ? "pb-8" : "pb-32"
         }`}
 >
       

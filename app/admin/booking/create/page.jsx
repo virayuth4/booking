@@ -2,7 +2,7 @@
 
 import authenticatedFetch from "@/app/auth/authenticatedFetch";
 import { useAuth } from "@/app/auth/authContext";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { CATEGORIES } from "@/lib/constants";
 import { useSearchParams } from "next/navigation";
 
@@ -43,8 +43,7 @@ function slugify(text) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
-
-export default function BookingSettings() {
+function BookingSettingsContent() {
   const { currentUser, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const isEdit = searchParams.get("edit") === "true";
@@ -1077,5 +1076,13 @@ export default function BookingSettings() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function BookingSettings() {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-gray-500">Loading booking settings...</div>}>
+      <BookingSettingsContent />
+    </Suspense>
   );
 }

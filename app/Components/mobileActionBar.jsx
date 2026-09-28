@@ -71,7 +71,7 @@ export default function MobileActionBar({ telegramHref }) {
           <CalendarIcon className="h-4 w-4" />
           Reserve
         </a>
-        <MyBookingButton />
+        {/* <MyBookingButton /> */}
         {telegramHref && (
           <a
             href={telegramHref}
