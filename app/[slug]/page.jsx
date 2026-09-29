@@ -235,7 +235,7 @@ export default async function BookingPage({ params }) {
     <BookingFooter/>
 
       {/* Mobile floating action pill */}
-      <MobileActionBar telegramHref={telegramHref} />
+      <MobileActionBar telegramHref={telegramHref} miniAppHref={miniAppHref}/>
     </main>
   );
 }

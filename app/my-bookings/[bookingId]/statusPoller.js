@@ -1,19 +1,57 @@
 'use client';
 
+import { simplerFormatDate } from '@/lib/formatDate';
 import { useEffect, useState } from 'react';
 
-const STATUS_STYLES = {
-  pending: { label: 'Pending', className: 'bg-amber-50 text-amber-700' },
-  accepted: { label: 'Confirmed', className: 'bg-emerald-50 text-emerald-700' },
-  confirmed: { label: 'Confirmed', className: 'bg-emerald-50 text-emerald-700' },
-  declined: { label: 'Declined', className: 'bg-red-50 text-red-700' },
+function StatusIcon({ name, className }) {
+  const paths = {
+    clock: 'M12 6v6l4 2m6-2a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z',
+    check: 'm5 13 4 4L19 7',
+    x: 'M6 6l12 12M18 6 6 18',
+    info: 'M12 8h.01M11 12h1v5h1m9-5a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z',
+  };
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d={paths[name]} />
+    </svg>
+  );
+}
+
+const CONFIRMED = {
+  title: 'Your table is confirmed',
+  description: 'The venue has accepted your booking. Show this page if they ask for your details.',
+  icon: 'check',
+  iconWrap: 'bg-emerald-50 text-emerald-600',
 };
 
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-}
+const STATUS_CONTENT = {
+  pending: {
+    title: 'Waiting for the venue to confirm',
+    description: "Your table isn't reserved until they accept. This page updates on its own.",
+    icon: 'clock',
+    iconWrap: 'bg-amber-50 text-amber-600',
+    live: true,
+  },
+  accepted: CONFIRMED,
+  confirmed: CONFIRMED,
+  declined: {
+    title: "The venue couldn't take this booking",
+    description: 'Try a different time or date, or contact the venue directly.',
+    icon: 'x',
+    iconWrap: 'bg-red-50 text-red-600',
+  },
+};
+
+
 
 export default function StatusPoller({ bookingId, initialBooking }) {
   const [booking, setBooking] = useState(initialBooking);
@@ -45,51 +83,55 @@ export default function StatusPoller({ bookingId, initialBooking }) {
     };
   }, [bookingId, booking.status]);
 
-  const statusInfo = STATUS_STYLES[booking.status] ?? {
-    label: booking.status,
-    className: 'bg-black/5 text-black/60',
+  const content = STATUS_CONTENT[booking.status] ?? {
+    title: `Status: ${booking.status}`,
+    description: 'Contact the venue if you have questions about this booking.',
+    icon: 'info',
+    iconWrap: 'bg-black/5 text-black/50',
   };
 
+  const rows = [
+    { label: 'Date', value: simplerFormatDate(booking.date) },
+    { label: 'Time', value: booking.time },
+    { label: 'Party size', value: `${booking.guests} ${booking.guests === 1 ? 'guest' : 'guests'}` },
+    booking.sectionName && { label: 'Area', value: booking.sectionName },
+    booking.serviceTypeName && { label: 'Service', value: booking.serviceTypeName },
+    { label: 'Booked under', value: booking.fullName },
+  ].filter(Boolean);
+
   return (
-    <div className="flex flex-col gap-4">
-      <span
-        className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold ${statusInfo.className}`}
-      >
-        {statusInfo.label}
-      </span>
+    <div className="flex flex-col gap-5">
+      {/* Status */}
+      <div className="flex items-start gap-3" role="status" aria-live="polite">
+        <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${content.iconWrap}`}>
+          <StatusIcon name={content.icon} className="h-5 w-5" />
+          {content.live && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-3 w-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-3 w-3 rounded-full border-2 border-white bg-amber-500" />
+            </span>
+          )}
+        </div>
+        <div>
+          <h2 className="text-base font-semibold text-[#141414]">{content.title}</h2>
+          <p className="mt-1 text-sm leading-6 text-black/55">{content.description}</p>
+        </div>
+      </div>
 
-      <dl className="grid grid-cols-2 gap-y-3 text-sm">
-        <dt className="text-black/40">Date</dt>
-        <dd className="text-right font-medium text-[#141414]">{formatDate(booking.date)}</dd>
-
-        <dt className="text-black/40">Time</dt>
-        <dd className="text-right font-medium text-[#141414]">{booking.time}</dd>
-
-        <dt className="text-black/40">Guests</dt>
-        <dd className="text-right font-medium text-[#141414]">{booking.guests}</dd>
-
-        {booking.sectionName && (
-          <>
-            <dt className="text-black/40">Location</dt>
-            <dd className="text-right font-medium text-[#141414]">{booking.sectionName}</dd>
-          </>
-        )}
-
-        {booking.serviceTypeName && (
-          <>
-            <dt className="text-black/40">Service</dt>
-            <dd className="text-right font-medium text-[#141414]">{booking.serviceTypeName}</dd>
-          </>
-        )}
-
-        <dt className="text-black/40">Booked under</dt>
-        <dd className="text-right font-medium text-[#141414]">{booking.fullName}</dd>
+      {/* Booking summary */}
+      <dl className="divide-y divide-black/5 rounded-xl border border-black/10 px-4">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-baseline justify-between gap-4 py-3">
+            <dt className="text-sm text-black/45">{row.label}</dt>
+            <dd className="text-right text-sm font-medium text-[#141414]">{row.value}</dd>
+          </div>
+        ))}
       </dl>
 
       {booking.note && (
-        <div className="rounded-xl bg-[#faf9f6] px-3.5 py-2.5 text-sm text-black/60">
-          <span className="block text-xs font-medium text-black/40">Note</span>
-          {booking.note}
+        <div className="rounded-xl bg-black/[0.03] px-4 py-3">
+          <p className="text-sm text-black/45">Your note</p>
+          <p className="mt-1 text-sm leading-6 text-[#141414]">{booking.note}</p>
         </div>
       )}
     </div>

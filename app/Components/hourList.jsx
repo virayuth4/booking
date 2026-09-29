@@ -3,8 +3,8 @@
 import { DAY_LABEL, DAY_ORDER } from "@/lib/constants";
 import { useState } from "react";
 
-
 function to12Hour(time) {
+  if (!time) return "";
   const [hStr, mStr] = time.split(":");
   const h = Number(hStr);
   const period = h >= 12 ? "pm" : "am";
@@ -12,22 +12,39 @@ function to12Hour(time) {
   return mStr === "00" ? `${hour12}${period}` : `${hour12}:${mStr}${period}`;
 }
 
+// Returns a day's time ranges, supporting both the new `slots` shape
+// and the legacy { open, close } shape. Empty array = closed / no hours.
+function getSlots(day) {
+  if (!day || day.closed) return [];
+  if (Array.isArray(day.slots) && day.slots.length) {
+    return [...day.slots].sort((a, b) => a.open.localeCompare(b.open));
+  }
+  if (day.open && day.close) return [{ open: day.open, close: day.close }];
+  return [];
+}
+
+const formatSlot = (s) => `${to12Hour(s.open)} – ${to12Hour(s.close)}`;
+
 export default function HoursList({ openingHours, todayKey, closedDates = [] }) {
   const [expanded, setExpanded] = useState(true);
-  const today = openingHours?.[todayKey];
+  const todaySlots = getSlots(openingHours?.[todayKey]);
 
   return (
     <section className="mt-10">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between text-left"
+        className="flex w-full items-center justify-between gap-3 text-left"
         aria-expanded={expanded}
       >
         <h2 className="text-xl font-semibold tracking-tight text-[#141414]">Hours</h2>
-        <span className="flex items-center gap-1.5 text-sm font-medium text-black/45">
-          {today?.closed ? "Closed today" : `${to12Hour(today.open)} – ${to12Hour(today.close)}`}
-          <ChevronIcon className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        <span className="flex items-center gap-1.5 text-right text-sm font-medium text-black/45">
+          {todaySlots.length === 0
+            ? "Closed today"
+            : todaySlots.map(formatSlot).join(" · ")}
+          <ChevronIcon
+            className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
         </span>
       </button>
 
@@ -39,12 +56,12 @@ export default function HoursList({ openingHours, todayKey, closedDates = [] }) 
         <div className="overflow-hidden">
           <ul className="divide-y divide-black/[0.06] overflow-hidden rounded-xl border border-black/10">
             {DAY_ORDER.map((day) => {
-              const hours = openingHours?.[day];
+              const slots = getSlots(openingHours?.[day]);
               const isToday = day === todayKey;
               return (
                 <li
                   key={day}
-                  className={`flex items-center gap-4 px-5 py-3.5 text-sm ${
+                  className={`flex items-start gap-4 px-5 py-3.5 text-sm ${
                     isToday ? "bg-[#faf9f6]" : ""
                   }`}
                 >
@@ -55,15 +72,23 @@ export default function HoursList({ openingHours, todayKey, closedDates = [] }) 
                   >
                     {DAY_LABEL[day]}
                   </span>
-                  {hours?.closed ? (
+
+                  {slots.length === 0 ? (
                     <span className="text-black/30">Closed</span>
                   ) : (
-                    <span className={isToday ? "text-[#141414]" : "text-black/45"}>
-                      {to12Hour(hours.open)} – {to12Hour(hours.close)}
-                    </span>
+                    <div
+                      className={`flex flex-col gap-1 ${
+                        isToday ? "text-[#141414]" : "text-black/45"
+                      }`}
+                    >
+                      {slots.map((slot, idx) => (
+                        <span key={idx}>{formatSlot(slot)}</span>
+                      ))}
+                    </div>
                   )}
+
                   {isToday && (
-                    <span className="ml-auto rounded border border-black/10 px-2 py-0.5 font-mono text-[11px] text-black/40">
+                    <span className="ml-auto shrink-0 rounded border border-black/10 px-2 py-0.5 font-mono text-[11px] text-black/40">
                       today
                     </span>
                   )}

@@ -23,8 +23,40 @@ const DEFAULT_HOURS = {
   close: "22:00",
 };
 
+const emptySlot = () => ({ ...DEFAULT_HOURS });
+
 const initialHours = () =>
-  Object.fromEntries(DAYS.map(({ key }) => [key, { closed: false, ...DEFAULT_HOURS }]));
+  Object.fromEntries(
+    DAYS.map(({ key }) => [key, { closed: false, slots: [emptySlot()] }])
+  );
+
+// Converts legacy {open, close} days into {slots: [...]}
+const normalizeHours = (raw) =>
+  Object.fromEntries(
+    DAYS.map(({ key }) => {
+      const d = raw?.[key] ?? {};
+      const slots =
+        Array.isArray(d.slots) && d.slots.length
+          ? d.slots.map((s) => ({ open: s.open, close: s.close }))
+          : [{ open: d.open || DEFAULT_HOURS.open, close: d.close || DEFAULT_HOURS.close }];
+      return [key, { closed: !!d.closed, slots }];
+    })
+  );
+
+// Returns an error string or null
+function validateSlots(slots) {
+  for (const s of slots) {
+    if (!s.open || !s.close) return "missing times";
+  }
+  const sorted = [...slots].sort((a, b) => a.open.localeCompare(b.open));
+  for (let i = 0; i < sorted.length; i++) {
+    const isLast = i === sorted.length - 1;
+    // Only the last slot may run past midnight
+    if (!isLast && sorted[i].close <= sorted[i].open) return "a slot ends before it starts";
+    if (!isLast && sorted[i].close > sorted[i + 1].open) return "slots overlap";
+  }
+  return null;
+}
 
 // Default rows a new booking page starts with. Feel free to change/remove.
 const defaultImageRows = () => [
@@ -147,13 +179,14 @@ function BookingSettingsContent() {
           setSlug(data.slug);
           setIsSlugCustomized(true);
         }
+        if (data.opening_hours) setHours(normalizeHours(data.opening_hours));
         if (data.category) setCategory(data.category);
         if (Array.isArray(data.service_types)) setServiceTypes(data.service_types);
         if (data.telegram_chat_id) {
           setTelegramChatId(String(data.telegram_chat_id));
           setTelegramStatus("connected");
         }
-        if (data.opening_hours) setHours(data.opening_hours);
+   
         if (Array.isArray(data.closed_dates)) setClosedDates(data.closed_dates);
 
         // New shape: data.image_rows = [{ label, image_paths: [...] }]
@@ -364,15 +397,45 @@ function BookingSettingsContent() {
   // ---------------------------------------------------------------------------
   // Hours Handlers
   // ---------------------------------------------------------------------------
-  const updateDay = (key, patch) =>
-    setHours((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+const updateDay = (key, patch) =>
+  setHours((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
 
-  const copyMondayToAll = () =>
-    setHours((prev) => {
-      const next = {};
-      DAYS.forEach(({ key }) => (next[key] = { ...prev.mon }));
-      return next;
+const updateSlot = (key, idx, patch) =>
+  setHours((prev) => ({
+    ...prev,
+    [key]: {
+      ...prev[key],
+      slots: prev[key].slots.map((s, i) => (i === idx ? { ...s, ...patch } : s)),
+    },
+  }));
+
+const addSlot = (key) =>
+  setHours((prev) => {
+    const slots = prev[key].slots;
+    const last = slots[slots.length - 1];
+    // Default the new slot to start 1h after the previous one ends
+    const [h, m] = (last?.close || "17:00").split(":").map(Number);
+    const start = `${String(Math.min(h + 1, 22)).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    return {
+      ...prev,
+      [key]: { ...prev[key], slots: [...slots, { open: start, close: "23:00" }] },
+    };
+  });
+
+const removeSlot = (key, idx) =>
+  setHours((prev) => ({
+    ...prev,
+    [key]: { ...prev[key], slots: prev[key].slots.filter((_, i) => i !== idx) },
+  }));
+
+const copyMondayToAll = () =>
+  setHours((prev) => {
+    const next = {};
+    DAYS.forEach(({ key }) => {
+      next[key] = { closed: prev.mon.closed, slots: prev.mon.slots.map((s) => ({ ...s })) };
     });
+    return next;
+  });
 
   const addClosedDate = () => {
     if (!newClosedDate || closedDates.includes(newClosedDate)) return;
@@ -498,12 +561,14 @@ function BookingSettingsContent() {
       return;
     }
 
-    const invalidDay = DAYS.find(
-      ({ key }) => !hours[key].closed && (!hours[key].open || !hours[key].close)
-    );
-    if (invalidDay) {
-      setError(`Set opening and closing times for ${invalidDay.label}, or mark it closed.`);
-      return;
+    for (const { key, label } of DAYS) {
+      const d = hours[key];
+      if (d.closed) continue;
+      const problem = validateSlots(d.slots);
+      if (problem) {
+        setError(`${label}: ${problem}. Fix the hours or mark the day closed.`);
+        return;
+      }
     }
 
     const form = new FormData();
@@ -515,7 +580,14 @@ function BookingSettingsContent() {
     form.append("map", business.map.trim());
     form.append("category", category);
     form.append("service_types", JSON.stringify(serviceTypes));
-    form.append("hours", JSON.stringify(hours));
+    const hoursPayload = Object.fromEntries(
+    DAYS.map(({ key }) => {
+      const d = hours[key];
+      const slots = [...d.slots].sort((a, b) => a.open.localeCompare(b.open));
+      return [key, { closed: d.closed, open: slots[0].open, close: slots[0].close, slots }];
+    })
+  );
+  form.append("hours", JSON.stringify(hoursPayload));
     form.append("closedDates", JSON.stringify(closedDates));
     if (telegramChatId) {
       form.append("telegram_chat_id", telegramChatId);
@@ -851,46 +923,69 @@ function BookingSettingsContent() {
           </div>
 
           <div className="mt-3 divide-y divide-[#F0F0F1] rounded-md border border-[#E5E7EB]">
-            {DAYS.map(({ key, label }) => {
-              const day = hours[key];
-              return (
-                <div key={key} className="flex items-center gap-3 px-4 py-3">
-                  <span className="w-24 shrink-0 text-sm text-[#374151]">{label}</span>
+          {DAYS.map(({ key, label }) => {
+  const day = hours[key];
+  return (
+    <div key={key} className="flex items-start gap-3 px-4 py-3">
+      <span className="w-24 shrink-0 pt-1 text-sm text-[#374151]">{label}</span>
 
-                  {day.closed ? (
-                    <span className="flex-1 text-sm text-[#9CA3AF]">Closed</span>
-                  ) : (
-                    <div className="flex flex-1 items-center gap-2">
-                      <input
-                        type="time"
-                        value={day.open}
-                        onChange={(e) => updateDay(key, { open: e.target.value })}
-                        aria-label={`${label} opens`}
-                        className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
-                      />
-                      <span className="text-[#9CA3AF]">–</span>
-                      <input
-                        type="time"
-                        value={day.close}
-                        onChange={(e) => updateDay(key, { close: e.target.value })}
-                        aria-label={`${label} closes`}
-                        className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
-                      />
-                    </div>
-                  )}
+      {day.closed ? (
+        <span className="flex-1 pt-1 text-sm text-[#9CA3AF]">Closed</span>
+      ) : (
+        <div className="flex flex-1 flex-col gap-2">
+          {day?.slots.map((slot, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                type="time"
+                value={slot.open}
+                onChange={(e) => updateSlot(key, idx, { open: e.target.value })}
+                aria-label={`${label} opens (shift ${idx + 1})`}
+                className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
+              />
+              <span className="text-[#9CA3AF]">–</span>
+              <input
+                type="time"
+                value={slot.close}
+                onChange={(e) => updateSlot(key, idx, { close: e.target.value })}
+                aria-label={`${label} closes (shift ${idx + 1})`}
+                className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
+              />
+              {day.slots.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeSlot(key, idx)}
+                  aria-label="Remove time range"
+                  className="text-xs text-[#9CA3AF] hover:text-red-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+          {day.slots.length < 3 && (
+            <button
+              type="button"
+              onClick={() => addSlot(key)}
+              className="self-start text-xs font-medium text-[#6B7280] hover:text-[#15803D]"
+            >
+              + Add hours
+            </button>
+          )}
+        </div>
+      )}
 
-                  <label className="flex shrink-0 items-center gap-2 text-xs text-[#4B5563]">
-                    <input
-                      type="checkbox"
-                      checked={day.closed}
-                      onChange={(e) => updateDay(key, { closed: e.target.checked })}
-                      className="h-4 w-4 accent-[#15803D]"
-                    />
-                    Closed
-                  </label>
-                </div>
-              );
-            })}
+      <label className="flex shrink-0 items-center gap-2 pt-1 text-xs text-[#4B5563]">
+        <input
+          type="checkbox"
+          checked={day.closed}
+          onChange={(e) => updateDay(key, { closed: e.target.checked })}
+          className="h-4 w-4 accent-[#15803D]"
+        />
+        Closed
+      </label>
+    </div>
+  );
+})}
           </div>
         </section>
 

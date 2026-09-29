@@ -5,15 +5,9 @@ import { AuthContext, useAuth } from '../auth/authContext';
 import { ClockIcon, XIcon, User, Phone, StickyNote, Users, Calendar, Clock, Utensils, MapPin } from 'lucide-react';
 import BookingTelegramNotify from './bookingTelegramNotify';
 import { useWriteAccessGate } from './useWriteAccessGate';
+import { MONTH_LABELS, WEEKDAY_LABELS } from '@/lib/constants';
+import { groupTimeSlots, getDaySchedule } from '@/lib/groupTimeSlots';
 
-
-
-const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-const MONTH_LABELS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -21,20 +15,7 @@ function pad2(n) {
 
 const DATA_DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
-function dateToDayKey(date) {
-  return DATA_DAY_ORDER[date.getDay()];
-}
 
-function timeToMinutes(t) {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
-}
-
-function minutesToTime(mins) {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${pad2(h)}:${pad2(m)}`;
-}
 
 function toDateKey(date) {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
@@ -56,6 +37,17 @@ function buildMonthGrid(year, month) {
 
   return cells;
 }
+
+const VERIFY_AVAILABILITY = false;
+
+
+
+const getSlots = (day) => {
+  if (!day || day.closed) return [];
+  if (Array.isArray(day.slots) && day.slots.length) return day.slots;
+  if (day.open && day.close) return [{ open: day.open, close: day.close }];
+  return [];
+};
 
 async function defaultGetAvailableTimes(section, dateKey, serviceType, pageId) {
   const params = new URLSearchParams({ pageId, date: dateKey });
@@ -434,6 +426,7 @@ return (
               timeSlots={timeSlots}
               activeField={activeField}
               onToggleField={toggleField}
+              openingHours={openingHours}
               sections={sections}
               serviceTypes={serviceTypes}
               onSelectSection={(v) => {
@@ -444,8 +437,9 @@ return (
                 setServiceType(v);
                 setActiveField(null);
               }}
-              onSelectDate={(d) => {
+             onSelectDate={(d) => {
                 setSelectedDate(d);
+                setTime(null);
                 setActiveField(null);
               }}
               onSelectTime={(t) => {
@@ -543,6 +537,7 @@ function ProgressSegment({ active, label }) {
 /* ============================== STEP 1 =============================== */
 
 function BookingStep({
+  openingHours,
   section,
   serviceType,
   guests,
@@ -640,7 +635,12 @@ function BookingStep({
   isOpen={activeField === 'time'}
   onClick={() => onToggleField('time')}
 >
-  <TimeSelector timeSlots={timeSlots} time={time} onSelectTime={onSelectTime} />
+<TimeSelector
+  timeSlots={timeSlots}
+  time={time}
+  onSelectTime={onSelectTime}
+  daySchedule={getDaySchedule(openingHours, selectedDate)}
+/>
 </BookingField>
     </div>
   );
@@ -954,37 +954,52 @@ function DateSelector({
 
 /* ============================== TIME SELECTOR ============================== */
 
-function TimeSelector({ timeSlots, time, onSelectTime }) {
+function TimeSelector({ timeSlots, time, onSelectTime, daySchedule }) {
   if (timeSlots.length === 0) {
     return <p className="py-4 text-center text-sm text-black/45">No times available.</p>;
   }
 
+  const groups = groupTimeSlots(timeSlots, daySchedule);
+
   return (
-    <div className="grid grid-cols-3 gap-2">
-      {timeSlots.map((slot) => {
-        const selected = time === slot.time;
-        return (
-          <button
-            key={slot.time}
-            type="button"
-            disabled={!slot.available}
-            onClick={() => onSelectTime(slot.time)}
-            className={`rounded-xl border px-2 py-3 text-sm font-medium transition-colors ${
-              selected
-                ? 'border-[#141414] bg-[#faf9f6] text-[#141414]'
-                : slot.available
-                ? 'border-black/10 text-black/60 hover:border-black/25 hover:bg-[#faf9f6]'
-                : 'border-black/5 text-black/20 line-through'
-            }`}
-          >
-            {slot.time}
-          </button>
-        );
-      })}
+    <div className="space-y-5">
+      {groups.map((group) => (
+        <section key={group.key}>
+          {group.label && (
+            <h3 className="mb-2 flex items-baseline justify-between text-xs font-semibold uppercase tracking-wide text-black/45">
+              <span>{group.label}</span>
+              <span className="font-normal normal-case tracking-normal text-black/30">
+                {group.range}
+              </span>
+            </h3>
+          )}
+          <div className="grid grid-cols-3 gap-2">
+            {group.slots.map((slot) => {
+              const selected = time === slot.time;
+              return (
+                <button
+                  key={slot.time}
+                  type="button"
+                  disabled={!slot.available}
+                  onClick={() => onSelectTime(slot.time)}
+                  className={`rounded-xl border px-2 py-3 text-sm font-medium transition-colors ${
+                    selected
+                      ? 'border-[#141414] bg-[#faf9f6] text-[#141414]'
+                      : slot.available
+                      ? 'border-black/10 text-black/60 hover:border-black/25 hover:bg-[#faf9f6]'
+                      : 'border-black/5 text-black/20 line-through'
+                  }`}
+                >
+                  {slot.time}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
-
 /* =================================== LOADING =================================== */
 
 function LoadingPanel() {

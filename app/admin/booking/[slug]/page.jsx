@@ -133,20 +133,8 @@ export default function BookingsPage() {
   }, [authLoading, currentUser, slug]);
 
   return (
-    <main className="min-h-screen bg-[#faf9f6] font-sans text-[#141414] antialiased">
-      <header className="sticky top-0 z-20 border-b border-black/10 bg-[#faf9f6]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-          <Link href="/admin" className="text-lg font-semibold tracking-tight">
-            Acme Reserve
-          </Link>
-          <Link
-            href="/admin"
-            className="text-sm text-black/55 transition hover:text-black/80"
-          >
-            ← Back to dashboard
-          </Link>
-        </div>
-      </header>
+    <main className="min-h-screen bg-white font-sans text-[#141414] antialiased">
+    
 
       <div className="mx-auto max-w-5xl px-6 py-12">
         <div className="flex flex-col justify-between gap-2 border-b border-black/10 pb-8 sm:flex-row sm:items-end">

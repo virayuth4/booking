@@ -56,7 +56,7 @@ function useMobileKeyboardOpen() {
   return isKeyboardOpen;
 }
 
-export default function MobileActionBar({ telegramHref }) {
+export default function MobileActionBar({ telegramHref, miniAppHref }) {
   const isKeyboardOpen = useMobileKeyboardOpen();
 
   if (isKeyboardOpen) return null;
@@ -65,7 +65,7 @@ export default function MobileActionBar({ telegramHref }) {
     <div className="fixed inset-x-0 bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-50 flex justify-center px-4">
       <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-[#141414]/95 p-1.5 shadow-2xl shadow-black/30 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <a
-          href="#booking"
+          href={miniAppHref}
           className="flex shrink-0 items-center gap-2 rounded-full bg-[#faf9f6] px-4 py-2.5 text-sm font-medium text-[#141414] transition hover:bg-white"
         >
           <CalendarIcon className="h-4 w-4" />
