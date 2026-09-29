@@ -12,9 +12,13 @@ import {
 import TelegramInit from "@/app/Components/telegramInit";
 import TelegramBookingSwitch from "@/app/Components/telegramBookingSwitch";
 import { BookingFooter } from "@/app/Components/bookingFooter";
+import TelegramGuard from "@/app/Components/telegramGuard";
+import ReserveOnTelegram from "@/app/Components/reserveOnTelegram";
 
-export default async function BookPage({ params }) {
+export default async function BookPage({ params, searchParams }) {
   const { slug } = await params;
+  const { platform } = await searchParams;
+  const isTelegram = platform === "tg";
 
   const page = await getBookingPage(slug);
   if (!page) notFound();
@@ -47,6 +51,7 @@ export default async function BookPage({ params }) {
 
   // Hero = first image of the first row, falling back to the logo.
   const heroImage = imageRows[0]?.images[0] || logoUrl;
+  const reserveCard = <ReserveOnTelegram slug={slug} name={name} />;
 
   return (
     <main className="relative min-h-dvh w-full bg-white pb-8 font-sans text-[#141414] antialiased">
@@ -81,14 +86,26 @@ export default async function BookPage({ params }) {
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-5 pt-10 sm:px-6">
           <TelegramBookingSwitch slug={slug} name={name}>
 
-        <BookingSection
-          pageId={page.id}
-          placeName={name}
-          sections={sections}
-          serviceTypes={serviceTypes}
-          openingHours={openingHours}
-          maxDaysAhead={page.max_days_ahead ?? 60}
-        />
+
+
+
+  {isTelegram ? (
+      <TelegramGuard >
+
+      <BookingSection
+        pageId={page.id}
+        placeName={name}
+        sections={sections}
+        serviceTypes={serviceTypes}
+        openingHours={openingHours}
+        maxDaysAhead={page.max_days_ahead ?? 60}
+      />
+        </TelegramGuard>
+
+    ) : (
+      reserveCard
+    )}
+
         </TelegramBookingSwitch>
         {imageRows.length > 0 && <GalleryCarousel rows={imageRows} name={name} />}
 

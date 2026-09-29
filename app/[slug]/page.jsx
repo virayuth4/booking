@@ -87,7 +87,8 @@ export default async function BookingPage({ params }) {
   const miniAppHref = process.env.NEXT_PUBLIC_TG_MINIAPP_LINK
     ? `${process.env.NEXT_PUBLIC_TG_MINIAPP_LINK}?startapp=${slug}`
     : "#booking";
-  const reserveExternal = miniAppHref !== "#booking";
+  
+    const reserveExternal = miniAppHref !== "#booking";
   const reserveProps = reserveExternal
     ? { target: "_blank", rel: "noopener noreferrer" }
     : {};
