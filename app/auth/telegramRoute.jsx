@@ -10,7 +10,7 @@ export async function POST(req) {
 
   const secretKey = crypto
     .createHash('sha256')
-    .update(process.env.TELEGRAM_BOT_TOKEN)
+    .update(process.env.MERCHANT_TELEGRAM_BOT_TOKEN)
     .digest();
 
   const checkString = Object.keys(userData)
