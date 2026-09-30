@@ -7,6 +7,7 @@ import BookingTelegramNotify from './bookingTelegramNotify';
 import { useWriteAccessGate } from './useWriteAccessGate';
 import { MONTH_LABELS, WEEKDAY_LABELS } from '@/lib/constants';
 import { groupTimeSlots, getDaySchedule } from '@/lib/groupTimeSlots';
+import { API_BASE } from '@/lib/apiBase';
 
 
 function pad2(n) {
@@ -54,9 +55,9 @@ async function defaultGetAvailableTimes(section, dateKey, serviceType, pageId) {
   if (section?.id) params.set('sectionId', section.id);
   if (serviceType?.id) params.set('serviceTypeId', serviceType.id);
 
-  const url = `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/booking/availability?${params}`;
+  const url = `${API_BASE}/api/booking-link/booking/availability?${params}`;
   try {
-   const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/booking/availability?${params}`);
+   const res = await fetch(`${url}`);
     const text = await res.text();
     console.log('availability', res.status, url, text.slice(0, 200));
     if (!res.ok) return [];
@@ -273,7 +274,8 @@ async function submitBooking(tg, writeAllowed) {
   setError(null);
 
   try {
-    const res = await fetch(`/api/booking-link/booking/create`, {
+    const url = `${API_BASE}/api/booking-link/booking/create`;
+    const res = await fetch(`${url}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
