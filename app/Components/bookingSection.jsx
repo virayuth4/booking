@@ -274,7 +274,7 @@ async function submitBooking(tg, writeAllowed) {
   setError(null);
 
   try {
-    const url = `${API_BASE}/api/booking-link/booking/create`;
+    const url = `/api/booking-link/booking/create`;
     const res = await fetch(`${url}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
