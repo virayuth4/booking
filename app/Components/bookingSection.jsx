@@ -408,7 +408,8 @@ return (
             time={time}
             bookingId={bookingId}
             telegramReady={telegramReady}
-            telegramBotUsername={process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME}
+            telegramBotUsername={process.env.NEXT_PUBLIC_MERCHANT_TELEGRAM_BOT_USERNAME
+}
             onDone={startOver}
           />
           ) : submitting ? (
