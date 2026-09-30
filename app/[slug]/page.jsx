@@ -84,9 +84,11 @@ export default async function BookingPage({ params }) {
   const telegramHref = toTelegramHref(telegram);
 
   // Telegram Mini App deep link (falls back to "#booking" if the env var is missing)
-  const miniAppHref = process.env.NEXT_PUBLIC_TG_MINIAPP_LINK
-    ? `${process.env.NEXT_PUBLIC_TG_MINIAPP_LINK}?startapp=${slug}`
-    : "#booking";
+  // const miniAppHref = process.env.NEXT_PUBLIC_TG_MINIAPP_LINK
+  //   ? `${process.env.NEXT_PUBLIC_TG_MINIAPP_LINK}?startapp=${slug}`
+  //   : "#booking";
+
+      const miniAppHref = process.env.NEXT_PUBLIC_BACKEND;
   
     const reserveExternal = miniAppHref !== "#booking";
   const reserveProps = reserveExternal
