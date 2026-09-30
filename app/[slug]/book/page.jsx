@@ -82,15 +82,23 @@ export default async function BookPage({ params, searchParams }) {
           </p>
         </div>
       </header>
+        <BookingSection
+        pageId={page.id}
+        placeName={name}
+        sections={sections}
+        serviceTypes={serviceTypes}
+        openingHours={openingHours}
+        maxDaysAhead={page.max_days_ahead ?? 60}
+      />
 
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-5 pt-10 sm:px-6">
-          <TelegramBookingSwitch slug={slug} name={name}>
+          {/* <TelegramBookingSwitch slug={slug} name={name}> */}
 
 
 
 
   {isTelegram ? (
-      <TelegramGuard >
+      // <TelegramGuard >
 
       <BookingSection
         pageId={page.id}
@@ -100,13 +108,13 @@ export default async function BookPage({ params, searchParams }) {
         openingHours={openingHours}
         maxDaysAhead={page.max_days_ahead ?? 60}
       />
-        </TelegramGuard>
+        // </TelegramGuard>
 
     ) : (
       reserveCard
     )}
 
-        </TelegramBookingSwitch>
+        {/* </TelegramBookingSwitch> */}
         {imageRows.length > 0 && <GalleryCarousel rows={imageRows} name={name} />}
 
         <HoursList

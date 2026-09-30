@@ -54,7 +54,7 @@ async function defaultGetAvailableTimes(section, dateKey, serviceType, pageId) {
   if (section?.id) params.set('sectionId', section.id);
   if (serviceType?.id) params.set('serviceTypeId', serviceType.id);
 
-  const url = `${process/NEXT_PUBLIC_BACKEND}/api/booking-link/booking/availability?${params}`;
+  const url = `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/booking/availability?${params}`;
   try {
    const res = await fetch(`/api/booking-link/booking/availability?${params}`);
     const text = await res.text();
