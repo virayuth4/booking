@@ -22,11 +22,11 @@ export default function Navigation({ currentUser, plan }) {
             <span className="text-lg font-semibold tracking-tight">acme reserve</span>
           </Link>
 
-          <nav className="hidden gap-8 text-sm text-black/60 md:flex">
+          {/* <nav className="hidden gap-8 text-sm text-black/60 md:flex">
             <a href="#industries" className="transition hover:text-black">Who it's for</a>
             <a href="#how" className="transition hover:text-black">How it works</a>
             <a href="#pricing" className="transition hover:text-black">Pricing</a>
-          </nav>
+          </nav> */}
 
           {currentUser ? (
             <div className="flex items-center gap-4">

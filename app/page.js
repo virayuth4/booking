@@ -72,7 +72,7 @@ export default function Home() {
             </Link>
           </div>
           <p className="mt-4 text-sm text-black/40">
-            $15/month · 7-day free trial · No upfront card needed
+            $15/month · 14-day free trial · No upfront card needed
           </p>
         </div>
 
@@ -149,7 +149,7 @@ export default function Home() {
               href="/signup"
               className="whitespace-nowrap rounded-full bg-[#141414] px-6 py-3 text-sm font-medium text-white transition hover:bg-black"
             >
-              Start free for 7 days
+              Start free for 14 days
             </Link>
           </div>
         </div>
