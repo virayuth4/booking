@@ -2,7 +2,7 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import authenticatedFetch from './authenticatedFetch';
-import { getAuth, onIdTokenChanged } from 'firebase/auth';
+import { getAuth, onIdTokenChanged, signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 
 
@@ -361,12 +361,33 @@ const getAnonId = () => {
     return newAnonId;
   };
 
+const logout = async () => {
+  try {
+    // 1) Clear the httpOnly session cookie and wait for it to finish
+    await fetch('/api/session', { method: 'DELETE' }).catch(() => {});
+
+    // 2) Sign out of Firebase (no-op if there's no Firebase user)
+    await signOut(auth);
+  } catch (error) {
+    console.error('Error during logout:', error);
+  } finally {
+    // 3) Always reset local state, even if a step above failed
+    clearUserSessionCache();                         // in-memory promise + sessionStorage cache
+    localStorage.removeItem('event_tracker_history');
+    setCurrentUser(null);
+    setCurrentSession(null);
+    regenerateAnonId();                              // fresh anon identity, not linked to the old user
+    setLoading(false);
+  }
+};
+
   return (
     <AuthContext.Provider value={{ 
       currentUser, 
       currentSession,
       loading,
       anonId,
+      logout,
       getAnonId,
       setCurrentUserManually,
       createAndSetCurrentUserManually,

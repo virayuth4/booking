@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import Navigation from "./navigation";
 import { useAuth } from "@/app/auth/authContext";
 
-const ALLOWED_TOP_LEVEL_PATHS = ["login", "signup", "forgot-password"];
+const ALLOWED_TOP_LEVEL_PATHS = ["login", "signup", "forgot-password", "about"];
 
 export default function ConditionalNavigation() {
   const pathname = usePathname();

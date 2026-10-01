@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/auth/authContext';
 
 function initials(nameOrEmail) {
   if (!nameOrEmail) return '?';
@@ -17,6 +18,8 @@ function initials(nameOrEmail) {
 export default function AdminHeader({ currentUser, plan, onLogout }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
+  const { logout } = useAuth();
+
 
   // Close on Escape key
   useEffect(() => {
@@ -46,21 +49,18 @@ export default function AdminHeader({ currentUser, plan, onLogout }) {
 
 
 
-  function handleLogout() {
-    setIsMenuOpen(false);
-    if (onLogout) {
-      onLogout();
-    } else {
-      router.push('/logout');
-    }
-  }
-
+async function handleLogout() {
+  setIsMenuOpen(false);
+  await (onLogout ? onLogout() : logout());
+  router.push('/');
+  router.refresh(); // drops cached server-component data for the old user
+}
   return (
     <>
       <header className="sticky top-0 z-20 border-b border-black/10 bg-[#faf9f6]/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
           <Link href="/admin">
-            <span className="text-lg font-semibold tracking-tight">acme reserve</span>
+            <span className="text-lg font-semibold tracking-tight">acme reserve (admin)</span>
           </Link>
 
           <div className="flex items-center gap-4">

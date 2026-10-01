@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import Navigation from "./Components/navigation/navigation";
 import ConditionalNavigation from "./Components/navigation/conditionalNavigation";
+import TelegramFloat from "./Components/floatingCustomerSupport";
 
 // Load Google Sans alternative (Plus Jakarta Sans)
 const googleSans = Plus_Jakarta_Sans({
@@ -56,7 +57,7 @@ export default function RootLayout({ children }) {
             {/* <TopNavigation/> */}
             <main className="flex-1 ">{children}</main>
             <Analytics />
-        
+        {/* <TelegramFloat/> */}
         </AuthProvider>
       </body>
     </html>

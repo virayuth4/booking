@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLoginLogic } from '../auth/useLoginLogic';
+import { fieldClasses, primaryButtonClasses, secondaryButtonClasses } from '@/lib/formStyle';
+
 
 function GoogleIcon(props) {
   return (
@@ -76,34 +78,32 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
     router.push(url);
   };
 
-  return (
-    <div className="min-h-screen bg-background px-5 py-8 font-sans text-foreground antialiased md:px-6 md:py-12">
+   return (
+    <div className="min-h-screen bg-white px-5 py-8 text-[#141414] md:px-6 md:py-12">
       <div className="mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-sm flex-col md:justify-center">
 
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           {isMerchant && (
-            <div className="mb-3">
-              <span className="inline-flex rounded border border-border px-2 py-0.5 font-tape text-[10px] tracking-wider text-muted-foreground uppercase">
+            <div className="mb-4 pt-2">
+              <span className="font-mono text-[11px] tracking-wide text-black/35 uppercase">
                 merchant portal
               </span>
             </div>
           )}
 
-          <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-semibold leading-[1.05] tracking-tight">
             Welcome back
           </h1>
 
-          <p className="font-body mt-2 text-sm leading-5 text-muted-foreground">
-        
-              Sign in to manage your bookings.
-            
+          <p className="mt-2 text-sm text-black/55">
+            Sign in to manage your bookings.
           </p>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="font-body mb-5 rounded-lg border border-destructive/20 bg-destructive/10 px-3.5 py-3 text-sm text-destructive">
+          <div className="mb-5 rounded-xl border border-red-500/15 bg-red-500/5 px-3.5 py-3 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -113,10 +113,10 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
           type="button"
           onClick={handleGoogleSignIn}
           disabled={isLoading}
-          className="press flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-3 font-sans text-sm font-medium text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+          className={secondaryButtonClasses}
         >
           {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-foreground" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <GoogleIcon />
           )}
@@ -124,19 +124,16 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
         </button>
 
         <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="font-mono text-[11px] text-muted-foreground">or</span>
-          <div className="h-px flex-1 bg-border" />
+          <div className="h-px flex-1 bg-black/10" />
+          <span className="font-mono text-[11px] tracking-wide text-black/35">OR</span>
+          <div className="h-px flex-1 bg-black/10" />
         </div>
 
         {/* Form */}
         <form onSubmit={handleSignIn} className="space-y-5">
           {/* Phone */}
           <div>
-            <label
-              htmlFor="phone"
-              className="mb-1.5 block font-sans text-sm font-medium text-foreground"
-            >
+            <label htmlFor="phone" className="mb-1.5 block text-sm font-medium">
               Phone number
             </label>
 
@@ -149,17 +146,14 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
               required
               disabled={isLoading}
               autoComplete="tel"
-              className="w-full rounded-lg border border-border bg-card px-3.5 py-3 font-body text-base text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className={fieldClasses}
             />
           </div>
 
           {/* Password */}
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <label
-                htmlFor="password"
-                className="font-sans text-sm font-medium text-foreground"
-              >
+              <label htmlFor="password" className="text-sm font-medium">
                 Password
               </label>
 
@@ -167,9 +161,9 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
-                className="font-tape text-[11px] uppercase tracking-wider text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+                className="font-mono text-[11px] tracking-wide text-black/55 hover:text-[#141414] disabled:opacity-50"
               >
-                {showPassword ? 'hide' : 'show'}
+                {showPassword ? 'HIDE' : 'SHOW'}
               </button>
             </div>
 
@@ -182,7 +176,7 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
               placeholder="Enter your password"
               disabled={isLoading}
               autoComplete="current-password"
-              className="w-full rounded-lg border border-border bg-card px-3.5 py-3 font-body text-base text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className={fieldClasses}
             />
           </div>
 
@@ -192,48 +186,40 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
               type="button"
               onClick={() => router.push('/forgot-password')}
               disabled={isLoading}
-              className="font-body text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+              className="text-sm text-black/55 transition hover:text-[#141414] disabled:opacity-50"
             >
               Forgot password?
             </button>
           </div>
 
           {/* Submit */}
-         <button
-          type="submit"
-          disabled={isLoading}
-          className="text-white press flex w-full items-center justify-center gap-2 bg-black rounded-full bg-primary px-4 py-3.5 font-sans text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:opacity-90 hover:shadow-xl hover:shadow-primary/30 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Signing in...</span>
-            </>
-          ) : (
-            <span>Sign in</span>
-          )}
-        </button>
+          <button type="submit" disabled={isLoading} className={primaryButtonClasses}>
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              <span>Sign in</span>
+            )}
+          </button>
         </form>
 
         {/* Signup */}
-        <div className="mt-8 text-center font-sans text-sm">
-          <span className="text-muted-foreground">
-            Don&apos;t have an account?{' '}
-          </span>
+        <div className="mt-8 text-center text-sm">
+          <span className="text-black/55">Don&apos;t have an account?</span>{' '}
           <button
             type="button"
             onClick={goToSignupWithCallback}
             disabled={isLoading}
-            className="font-medium text-foreground transition hover:underline disabled:opacity-50"
+            className="font-semibold text-[#141414] hover:underline disabled:opacity-50"
           >
-            {isMerchant
-              ? 'Create merchant account'
-              : 'Create an account'}
+            {isMerchant ? 'Create merchant account' : 'Create an account'}
           </button>
         </div>
 
         {/* Footer */}
-        <div className="mt-10 text-center font-tape text-[11px] uppercase tracking-wider text-muted-foreground/70">
+        <div className="mt-10 text-center font-mono text-[11px] text-black/35">
           © {new Date().getFullYear()} acme reserve
         </div>
       </div>

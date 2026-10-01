@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Loader2, ChevronLeft } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSignUpLogic } from '../auth/signUpLogic';
+import { fieldClasses, primaryButtonClasses, secondaryButtonClasses } from '@/lib/formStyle';
+import OtpStep from '../Components/OTPStep';
 
 const STEPS = {
   PHONE: 'phone',
@@ -12,7 +14,7 @@ const STEPS = {
 };
 
 const STEP_META = {
-  [STEPS.PHONE]: { n: '01', title: 'Create your account', sub: 'Start earning cashback with RielPoint.' },
+  [STEPS.PHONE]: { n: '01', title: 'Create your account', sub: 'Sign up & manage your booking link' },
   [STEPS.PASSWORD]: { n: '02', title: 'Set a password', sub: "You'll use this to sign in next time." },
   [STEPS.OTP]: { n: '03', title: 'Verify your phone', sub: null },
 };
@@ -40,16 +42,6 @@ function GoogleIcon(props) {
   );
 }
 
-// shared field classes — rounded-xl panel, hairline border, mono-friendly focus ring
-const fieldClasses =
-  'w-full rounded-xl border border-black/10 bg-white px-3.5 py-3 text-base text-[#141414] outline-none transition placeholder:text-black/30 focus:border-black/30 focus:ring-2 focus:ring-black/5 disabled:cursor-not-allowed disabled:opacity-50';
-
-const primaryButtonClasses =
-  'flex w-full items-center justify-center gap-2 rounded-full bg-[#141414] px-4 py-3.5 text-base font-semibold text-[#faf9f6] shadow-lg shadow-black/20 transition hover:bg-black hover:shadow-xl hover:shadow-black/25 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none';
-
-const secondaryButtonClasses =
-  'flex w-full items-center justify-center gap-2 rounded-full border border-black/10 bg-[#f2f0ea] px-4 py-3 text-sm font-semibold text-[#141414] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50';
-
 export default function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -65,15 +57,8 @@ export default function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isResending, setIsResending] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-  // OTP state
-  const [otp, setOtp] = useState('');
-  const [otpError, setOtpError] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [attempts, setAttempts] = useState(1);
+  const [isOtpBusy, setIsOtpBusy] = useState(false); // reported by <OtpStep />
 
   const [referredBy] = useState(() => {
     const ref = searchParams.get('ref');
@@ -105,7 +90,6 @@ export default function SignUpForm() {
     setError('');
 
     try {
-      console.log("Sending Registration Initiate")
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/user/registration/initiate`, {
         method: 'POST',
         credentials: 'include',
@@ -118,7 +102,6 @@ export default function SignUpForm() {
         throw new Error(errorData.error || errorData.message || 'Failed to send OTP');
       }
 
-      setTimeLeft(60);
       setStep(STEPS.OTP);
     } catch (error) {
       setError(error.message || 'Failed to send OTP. Please try again.');
@@ -127,80 +110,16 @@ export default function SignUpForm() {
     }
   };
 
-  // Countdown for OTP step
-  React.useEffect(() => {
-    if (step !== STEPS.OTP || timeLeft <= 0) return;
-    const interval = setInterval(() => setTimeLeft((t) => t - 1), 1000);
-    return () => clearInterval(interval);
-  }, [step, timeLeft]);
+  // Step 3: <OtpStep /> confirms the code, then calls this to finish signup
+  const handleOtpVerified = async () => {
+    const result = await phoneEmailSignUp(formattedPhoneForApi(), password, referredBy);
 
-  // Step 3: confirm OTP, then create the account
-  const handleVerifyOTP = async (e) => {
-    e.preventDefault();
-    setIsVerifying(true);
-    setOtpError('');
-
-    try {
-      const verifyResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/user/registration/otp/confirmation/${formattedPhoneForApi()}`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ otp }),
-        }
-      );
-
-      if (!verifyResponse.ok) {
-        const errorData = await verifyResponse.json();
-        throw new Error(errorData.error || errorData.message || 'Invalid code');
-      }
-
-      // Backend already created the account using the password from step 2
-      // (see backend notes below) — sign the user in client-side now
-      const result = await phoneEmailSignUp(formattedPhoneForApi(), password, referredBy);
-
-      if (result.success) {
-        setPassword('');
-        router.push(callback || '/');
-      } else {
-        throw new Error(result.error || 'Failed to complete sign in');
-      }
-    } catch (error) {
-      setOtpError(error.message || 'Failed to verify code. Please try again.');
-    } finally {
-      setIsVerifying(false);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to complete sign in'); // shown inside OtpStep
     }
-  };
 
-  const handleResendOTP = async () => {
-    setIsResending(true);
-    setOtpError('');
-
-    try {
-      console.log("Hand resending otp")
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/user/registration/otp/resend/${formattedPhoneForApi()}`,
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || data.error || 'Failed to resend code');
-      }
-
-      setAttempts(data.resendCount);
-      setTimeLeft(60);
-    } catch (err) {
-      setOtpError(err.message || 'Failed to resend code. Please try again.');
-    } finally {
-      setIsResending(false);
-    }
+    setPassword('');
+    router.push(callback || '/');
   };
 
   // Google sign-up short-circuits the whole phone/OTP wizard
@@ -217,9 +136,6 @@ export default function SignUpForm() {
       setIsGoogleLoading(false);
     }
   };
-
-  const formatTime = (seconds) =>
-    `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 
   const goBack = () => {
     setError('');
@@ -239,7 +155,7 @@ export default function SignUpForm() {
             <button
               type="button"
               onClick={goBack}
-              disabled={isLoading || isVerifying}
+              disabled={isLoading || isOtpBusy}
               className="mb-5 -ml-1 flex items-center gap-1 text-sm font-medium text-black/55 hover:text-[#141414] disabled:opacity-50"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -248,7 +164,7 @@ export default function SignUpForm() {
           )}
 
           {/* mono step numeral over a hairline rule */}
-          <div className="mb-4 border-t border-black/15 pt-2">
+          <div className="mb-4  border-black/15 pt-2">
             <span className="font-mono text-[11px] tracking-wide text-black/35">{meta.n} / 03</span>
           </div>
 
@@ -259,8 +175,9 @@ export default function SignUpForm() {
           <p className="mt-2 text-sm text-black/55">
             {step === STEPS.OTP ? (
               <>
-                Enter the code sent to{' '}
-                <span className="font-mono text-black/70">+855 {formattedPhoneForApi()}</span>
+                Confirm{' '}
+                <span className="font-mono text-black/70">+855 {formattedPhoneForApi()}</span>{' '}
+                with a code from Telegram.
               </>
             ) : (
               meta.sub
@@ -368,75 +285,13 @@ export default function SignUpForm() {
           </form>
         )}
 
-        {/* Step 3: OTP */}
+        {/* Step 3: OTP (its own component) */}
         {step === STEPS.OTP && (
-          <>
-            <div className="mb-5 text-center text-sm text-black/55">
-              Code expires in{' '}
-              <span className="font-mono font-medium text-[#141414]">{formatTime(timeLeft)}</span>
-            </div>
-
-            {otpError && (
-              <div className="mb-5 rounded-xl border border-red-500/15 bg-red-500/5 px-3.5 py-3 text-sm text-red-600">
-                {otpError}
-              </div>
-            )}
-
-            <form onSubmit={handleVerifyOTP} className="space-y-5">
-              <div>
-                <label htmlFor="otp" className="mb-1.5 block text-sm font-medium">
-                  Verification code
-                </label>
-                <input
-                  id="otp"
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  required
-                  disabled={isVerifying || timeLeft <= 0}
-                  maxLength={6}
-                  inputMode="numeric"
-                  autoFocus
-                  className={`${fieldClasses} text-center font-mono text-lg tracking-[0.3em] placeholder:text-black/20`}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isVerifying || timeLeft <= 0}
-                className={primaryButtonClasses}
-              >
-                {isVerifying ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Verifying...</span>
-                  </>
-                ) : (
-                  <span>Verify phone</span>
-                )}
-              </button>
-            </form>
-
-            <div className="mt-6 text-center">
-              {timeLeft <= 0 ? (
-                attempts > 3 ? (
-                  <p className="text-sm text-black/35">Maximum resend attempts reached.</p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleResendOTP}
-                    disabled={isVerifying || isResending}
-                    className="text-sm font-medium text-[#141414] hover:underline disabled:opacity-50"
-                  >
-                    {isResending ? 'Resending...' : 'Resend verification code'}
-                  </button>
-                )
-              ) : (
-                <p className="text-sm text-black/35">You can request a new code after it expires.</p>
-              )}
-            </div>
-          </>
+          <OtpStep
+            phoneNumber={formattedPhoneForApi()}
+            onVerified={handleOtpVerified}
+            onBusyChange={setIsOtpBusy}
+          />
         )}
 
         {/* Login */}

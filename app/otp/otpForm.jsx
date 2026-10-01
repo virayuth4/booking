@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useRegistration } from '../context/registrationContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from 'lucide-react';
+import { Loader2, Send } from 'lucide-react';
 import { useSignUpLogic } from '../auth/signUpLogic';
+
+const API = `${process.env.NEXT_PUBLIC_BACKEND}/api/flutter/user/registration`;
 
 export default function OtpForm() {
   const router = useRouter();
@@ -23,7 +25,16 @@ export default function OtpForm() {
   const [error, setError] = useState('');
   const [isCheckingData, setIsCheckingData] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(60);
+
+  // Timer only starts once the bot has actually sent the code
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  // Telegram step: 'idle' -> 'waiting' -> 'code_sent'
+  const [tgStatus, setTgStatus] = useState('idle');
+  const [tgDetail, setTgDetail] = useState('pending'); // 'pending' | 'awaiting_contact'
+  const [tgNonce, setTgNonce] = useState(null);
+  const [tgDeepLink, setTgDeepLink] = useState('');
+  const [tgExpiresAt, setTgExpiresAt] = useState(null);
 
   const { phoneEmailSignUp } = useSignUpLogic({ isModal: false });
   const searchParams = useSearchParams();
@@ -47,6 +58,86 @@ export default function OtpForm() {
     return () => clearTimeout(checkData);
   }, [registrationData, router, isVerified]);
 
+  // Poll the server while the user is in Telegram
+  useEffect(() => {
+    if (tgStatus !== 'waiting' || !tgNonce) return;
+
+    let cancelled = false;
+
+    const poll = async () => {
+      if (tgExpiresAt && Date.now() > new Date(tgExpiresAt).getTime()) {
+        setTgStatus('idle');
+        setError('Telegram link expired. Please try again.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/telegram/status/${tgNonce}`, { credentials: 'include' });
+        const data = await res.json();
+        if (cancelled) return;
+
+        switch (data.status) {
+          case 'code_sent':
+            setError('');
+            setTimeLeft(60);
+            setTgStatus('code_sent');
+            break;
+          case 'awaiting_contact':
+            setTgDetail('awaiting_contact');
+            break;
+          case 'phone_mismatch':
+            setTgStatus('idle');
+            setError('The Telegram number does not match the number you entered.');
+            break;
+          case 'expired':
+            setTgStatus('idle');
+            setError('Telegram link expired. Please try again.');
+            break;
+          default:
+            break; // 'pending' – keep waiting
+        }
+      } catch {
+        // Network blip – next tick will retry
+      }
+    };
+
+    const id = setInterval(poll, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [tgStatus, tgNonce, tgExpiresAt]);
+
+  // Step 1: ask the server for a one-time link to the bot
+  const handleGetTelegramCode = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch(`${API}/telegram/start`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: registrationData.phoneNumber })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.message || 'Could not start Telegram verification');
+
+      setTgNonce(data.nonce);
+      setTgDeepLink(data.deepLink);
+      setTgExpiresAt(data.expiresAt);
+      setTgDetail('pending');
+      setTgStatus('waiting');
+
+      // May be blocked on some mobile browsers – the "Open Telegram" link below is the fallback
+      window.open(data.deepLink, '_blank', 'noopener');
+    } catch (err) {
+      setError(err.message || 'Could not start Telegram verification.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Phase A: verify the OTP code only — no password involved yet
   const handleVerifyOTP = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -57,7 +148,7 @@ export default function OtpForm() {
       const { phoneNumber } = registrationData;
 
       const verifyResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND}/api/flutter/user/registration/otp/confirmation/${phoneNumber}`,
+        `${API}/otp/confirmation/${phoneNumber}`,
         {
           method: "POST",
           credentials: 'include',
@@ -116,18 +207,32 @@ export default function OtpForm() {
     }
   };
 
+  // Resend: server's bot DMs a new code to the chat that already shared its number
   const handleResendOTP = async () => {
-    incrementAttempts();
-    await fetch(`${process.env.NEXT_PUBLIC_BACKEND}/api/flutter/user/registration/otp/resend/${registrationData.phoneNumber}`, {
-      method: "POST",
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fullName: registrationData.fullName,
-        attempts: registrationData.attempts + 1
-      })
-    });
-    setTimeLeft(60);
+    setIsLoading(true);
+    setError('');
+    try {
+      incrementAttempts();
+      const res = await fetch(`${API}/otp/resend/${registrationData.phoneNumber}`, {
+        method: "POST",
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: registrationData.fullName,
+          attempts: registrationData.attempts + 1
+        })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || data.message || 'Failed to resend code');
+      }
+      setOtp('');
+      setTimeLeft(60);
+    } catch (err) {
+      setError(err.message || 'Failed to resend code.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const formatTime = (seconds) =>
@@ -144,6 +249,8 @@ export default function OtpForm() {
     );
   }
 
+  const codeSent = tgStatus === 'code_sent';
+
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between p-6 md:p-12 font-mono text-xs uppercase tracking-wider text-black">
       <div className="hidden md:block"></div>
@@ -156,11 +263,13 @@ export default function OtpForm() {
           <p className="text-[10px] text-stone-500 normal-case tracking-normal leading-relaxed">
             {otpVerified
               ? 'Your phone number has been verified. Choose a password to finish creating your account.'
-              : `A validation code has been transmitted to +855 ${registrationData.phoneNumber}`}
+              : codeSent
+                ? 'Your code has been sent to your Telegram chat. Enter it below.'
+                : `Verify +855 ${registrationData.phoneNumber} with Telegram. Your code will be sent in a chat with our bot.`}
           </p>
         </div>
 
-        {!otpVerified && (
+        {!otpVerified && codeSent && (
           <div className="text-left text-[10px] text-stone-500 tracking-widest">
             EXPIRES IN: <span className="text-black font-normal">{formatTime(timeLeft)}</span>
           </div>
@@ -172,8 +281,58 @@ export default function OtpForm() {
           </div>
         )}
 
-        {!otpVerified ? (
-          // Phase A — OTP entry
+        {/* Phase A.1 — get the code from Telegram */}
+        {!otpVerified && !codeSent && (
+          tgStatus === 'waiting' ? (
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 text-[10px] tracking-widest">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>WAITING FOR TELEGRAM...</span>
+              </div>
+
+              <ol className="list-decimal list-inside space-y-1 normal-case tracking-normal text-[11px] leading-relaxed">
+                <li className={tgDetail === 'pending' ? 'text-black' : 'text-stone-400'}>
+                  Open the bot and tap Start
+                </li>
+                <li className={tgDetail === 'awaiting_contact' ? 'text-black' : 'text-stone-400'}>
+                  Tap “Share my number”
+                </li>
+                <li className="text-stone-400">Come back here and enter your code</li>
+              </ol>
+
+              <a
+                href={tgDeepLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-[10px] tracking-widest text-black hover:underline underline-offset-4"
+              >
+                Open Telegram again
+              </a>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              onClick={handleGetTelegramCode}
+              className="w-full h-11 bg-black hover:bg-neutral-800 text-white font-normal tracking-widest rounded-none border-0 shadow-none transition-colors duration-200 disabled:opacity-30 disabled:bg-black"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>OPENING...</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center space-x-2">
+                  <Send className="h-3 w-3" />
+                  <span>GET CODE ON TELEGRAM</span>
+                </div>
+              )}
+            </Button>
+          )
+        )}
+
+        {/* Phase A.2 — OTP entry (after the bot sent the code) */}
+        {!otpVerified && codeSent && (
           <form onSubmit={handleVerifyOTP} className="space-y-6">
             <Input
               type="text"
@@ -185,6 +344,7 @@ export default function OtpForm() {
               disabled={isLoading || timeLeft <= 0}
               maxLength={6}
               inputMode="numeric"
+              autoComplete="one-time-code"
             />
             <Button
               type="submit"
@@ -199,8 +359,10 @@ export default function OtpForm() {
               ) : 'CONFIRM CODE'}
             </Button>
           </form>
-        ) : (
-          // Phase B — password entry, local state only
+        )}
+
+        {/* Phase B — password entry, local state only */}
+        {otpVerified && (
           <form onSubmit={handleCreateAccount} className="space-y-4">
             <div className="space-y-1 relative">
               <Input
@@ -252,24 +414,35 @@ export default function OtpForm() {
 
         {!otpVerified && (
           <div className="flex flex-col space-y-2 text-[10px] text-stone-500 tracking-widest pt-2 border-t border-stone-100">
-            {timeLeft <= 0 ? (
-              registrationData.attempts > 3 ? (
-                <p className="text-stone-400 normal-case tracking-normal">
-                  Maximum allocation of code retransmissions exceeded.
-                </p>
+            {codeSent && (
+              timeLeft <= 0 ? (
+                registrationData.attempts > 3 ? (
+                  <p className="text-stone-400 normal-case tracking-normal">
+                    Maximum allocation of code retransmissions exceeded.
+                  </p>
+                ) : (
+                  <button
+                    onClick={handleResendOTP}
+                    disabled={isLoading}
+                    className="text-left text-black hover:underline underline-offset-4 focus:outline-none"
+                  >
+                    Resend Code
+                  </button>
+                )
               ) : (
-                <button
-                  onClick={handleResendOTP}
-                  disabled={isLoading}
-                  className="text-left text-black hover:underline underline-offset-4 focus:outline-none"
-                >
-                  Resend Code
-                </button>
+                <p className="normal-case tracking-normal text-stone-400 leading-relaxed">
+                  If the message was not received, a new request will become available once the active code expires.
+                </p>
               )
-            ) : (
-              <p className="normal-case tracking-normal text-stone-400 leading-relaxed">
-                If the message was not received, a new request block will become available once the active sequence expires.
-              </p>
+            )}
+
+            {tgStatus === 'waiting' && (
+              <button
+                onClick={() => setTgStatus('idle')}
+                className="text-left hover:text-black transition-colors duration-200 focus:outline-none"
+              >
+                Cancel
+              </button>
             )}
 
             <button
