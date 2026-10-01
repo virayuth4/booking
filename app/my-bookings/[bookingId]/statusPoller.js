@@ -68,6 +68,7 @@ export default function StatusPoller({ bookingId, initialBooking }) {
           `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/booking/id/${bookingId}`,
           { cache: 'no-store' }
         );
+   
         if (!res.ok) return;
         const { booking: fresh } = await res.json();
         if (!cancelled) setBooking(fresh);
@@ -97,6 +98,7 @@ export default function StatusPoller({ bookingId, initialBooking }) {
     booking.sectionName && { label: 'Area', value: booking.sectionName },
     booking.serviceTypeName && { label: 'Service', value: booking.serviceTypeName },
     { label: 'Booked under', value: booking.fullName },
+    { label: 'Phone Booked under', value: booking.contact },
   ].filter(Boolean);
 
   return (

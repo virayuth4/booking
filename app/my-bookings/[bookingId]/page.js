@@ -22,7 +22,7 @@ export default async function MyBookingPage({ params }) {
   if (!booking) notFound();
 
   return (
-    <main className="mx-auto max-w-lg px-5 py-10">
+    <main className="mx-auto max-w-lg px-5 py-10 mb-24">
       <div className="overflow-hidden rounded-2xl border border-black/10 bg-white">
         <div className="border-b border-black/10 px-5 py-5">
           <p className="text-xs font-medium uppercase tracking-wide text-black/40">

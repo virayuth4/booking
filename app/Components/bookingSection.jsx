@@ -40,16 +40,9 @@ function buildMonthGrid(year, month) {
   return cells;
 }
 
-const VERIFY_AVAILABILITY = false;
 
 
 
-const getSlots = (day) => {
-  if (!day || day.closed) return [];
-  if (Array.isArray(day.slots) && day.slots.length) return day.slots;
-  if (day.open && day.close) return [{ open: day.open, close: day.close }];
-  return [];
-};
 
 async function defaultGetAvailableTimes(section, dateKey, serviceType, pageId) {
   const params = new URLSearchParams({ pageId, date: dateKey });

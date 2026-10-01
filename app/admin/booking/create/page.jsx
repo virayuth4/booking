@@ -101,6 +101,7 @@ function BookingSettingsContent() {
   const [telegramDeepLink, setTelegramDeepLink] = useState("");
   const pollTimerRef = useRef(null);
   const currentSessionTokenRef = useRef(null);
+  const [previousChatId, setPreviousChatId] = useState(null);
 
   // Hours & Schedule
   const [hours, setHours] = useState(initialHours);
@@ -118,6 +119,7 @@ function BookingSettingsContent() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [pageLoading, setPageLoading] = useState(isEdit);
+
 
   // Revoke preview URLs only on unmount
   const imageRowsRef = useRef(imageRows);
@@ -297,6 +299,7 @@ function BookingSettingsContent() {
       if (data.connected && data.chatId) {
         setTelegramChatId(String(data.chatId));
         setTelegramStatus("connected");
+        setPreviousChatId(null);
         stopPollingOnly();
         return true;
       }
@@ -374,24 +377,29 @@ function BookingSettingsContent() {
     setTelegramStatus("idle");
   };
 
-  const handleDisconnectTelegram = async (e) => {
+  const handleDisconnectTelegram = (e) => {
     if (e) e.preventDefault();
-    if (!confirm("Are you sure you want to stop receiving booking notifications on Telegram?")) return;
+    if (
+      !confirm(
+        "Disconnect Telegram? You'll need to connect a Telegram account again before you can save. Nothing changes until you save."
+      )
+    )
+      return;
 
-    if (pageId && isEdit) {
-      try {
-        await authenticatedFetch(
-          `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/booking-settings/${pageId}/telegram-disconnect`,
-          { method: "POST", credentials: "include" }
-        );
-      } catch (err) {
-        console.error("Disconnect error:", err);
-      }
-    }
-
+    // Soft disconnect: local only, no backend call
+    setPreviousChatId(telegramChatId);
     setTelegramChatId(null);
     setTelegramStatus("idle");
     currentSessionTokenRef.current = null;
+  };
+
+  const handleUndoDisconnect = (e) => {
+    if (e) e.preventDefault();
+    if (!previousChatId) return;
+    stopPollingOnly();
+    setTelegramChatId(previousChatId);
+    setTelegramStatus("connected");
+    setPreviousChatId(null);
   };
 
   // ---------------------------------------------------------------------------
@@ -757,6 +765,8 @@ const copyMondayToAll = () =>
                     ? "Tap 'Confirm & Connect' inside the Telegram bot. Waiting for update..."
                     : telegramStatus === "timed_out"
                     ? "Didn't receive confirmation in time. Tap Retry to start again."
+                    : previousChatId
+                    ? "Telegram disconnected. Your previous connection is kept until you save. Connect an account to continue, or undo."
                     : "Connect your Telegram bot to approve or decline guest booking requests."}
                 </p>
               </div>
@@ -788,27 +798,49 @@ const copyMondayToAll = () =>
                     </button>
                   </>
                 ) : telegramStatus === "timed_out" ? (
-                  <button
-                    type="button"
-                    onClick={handleVerifyTelegram}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-[#15803D] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[#166534] transition"
-                  >
-                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Retry Connection
-                  </button>
+                  <>
+                    {previousChatId && (
+                      <button
+                        type="button"
+                        onClick={handleUndoDisconnect}
+                        className="rounded-md border border-[#D1D5DB] bg-white px-3 py-1.5 text-xs font-medium text-[#374151] hover:border-[#15803D] hover:text-[#15803D] transition"
+                      >
+                        Undo disconnect
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleVerifyTelegram}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-[#15803D] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[#166534] transition"
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Retry Connection
+                    </button>
+                  </>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleVerifyTelegram}
-                    className="inline-flex items-center gap-2 rounded-md bg-[#15803D] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[#166534] transition"
-                  >
-                    <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .36z" />
-                    </svg>
-                    Verify & Connect Telegram
-                  </button>
+                  <>
+                    {previousChatId && (
+                      <button
+                        type="button"
+                        onClick={handleUndoDisconnect}
+                        className="rounded-md border border-[#D1D5DB] bg-white px-3 py-1.5 text-xs font-medium text-[#374151] hover:border-[#15803D] hover:text-[#15803D] transition"
+                      >
+                        Undo disconnect
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleVerifyTelegram}
+                      className="inline-flex items-center gap-2 rounded-md bg-[#15803D] px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-[#166534] transition"
+                    >
+                      <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .36z" />
+                      </svg>
+                      {previousChatId ? "Connect new Telegram" : "Verify & Connect Telegram"}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -923,69 +955,69 @@ const copyMondayToAll = () =>
           </div>
 
           <div className="mt-3 divide-y divide-[#F0F0F1] rounded-md border border-[#E5E7EB]">
-          {DAYS.map(({ key, label }) => {
-  const day = hours[key];
-  return (
-    <div key={key} className="flex items-start gap-3 px-4 py-3">
-      <span className="w-24 shrink-0 pt-1 text-sm text-[#374151]">{label}</span>
+            {DAYS.map(({ key, label }) => {
+              const day = hours[key];
+              return (
+                <div key={key} className="flex items-start gap-3 px-4 py-3">
+                  <span className="w-24 shrink-0 pt-1 text-sm text-[#374151]">{label}</span>
 
-      {day.closed ? (
-        <span className="flex-1 pt-1 text-sm text-[#9CA3AF]">Closed</span>
-      ) : (
-        <div className="flex flex-1 flex-col gap-2">
-          {day?.slots.map((slot, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <input
-                type="time"
-                value={slot.open}
-                onChange={(e) => updateSlot(key, idx, { open: e.target.value })}
-                aria-label={`${label} opens (shift ${idx + 1})`}
-                className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
-              />
-              <span className="text-[#9CA3AF]">–</span>
-              <input
-                type="time"
-                value={slot.close}
-                onChange={(e) => updateSlot(key, idx, { close: e.target.value })}
-                aria-label={`${label} closes (shift ${idx + 1})`}
-                className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
-              />
-              {day.slots.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeSlot(key, idx)}
-                  aria-label="Remove time range"
-                  className="text-xs text-[#9CA3AF] hover:text-red-600"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          ))}
-          {day.slots.length < 3 && (
-            <button
-              type="button"
-              onClick={() => addSlot(key)}
-              className="self-start text-xs font-medium text-[#6B7280] hover:text-[#15803D]"
-            >
-              + Add hours
-            </button>
-          )}
-        </div>
-      )}
+                  {day.closed ? (
+                    <span className="flex-1 pt-1 text-sm text-[#9CA3AF]">Closed</span>
+                  ) : (
+                    <div className="flex flex-1 flex-col gap-2">
+                      {day?.slots.map((slot, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <input
+                            type="time"
+                            value={slot.open}
+                            onChange={(e) => updateSlot(key, idx, { open: e.target.value })}
+                            aria-label={`${label} opens (shift ${idx + 1})`}
+                            className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
+                          />
+                          <span className="text-[#9CA3AF]">–</span>
+                          <input
+                            type="time"
+                            value={slot.close}
+                            onChange={(e) => updateSlot(key, idx, { close: e.target.value })}
+                            aria-label={`${label} closes (shift ${idx + 1})`}
+                            className="rounded-md border border-[#D1D5DB] px-2 py-1 text-sm outline-none focus:border-[#15803D]"
+                          />
+                          {day.slots.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeSlot(key, idx)}
+                              aria-label="Remove time range"
+                              className="text-xs text-[#9CA3AF] hover:text-red-600"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      {day.slots.length < 3 && (
+                        <button
+                          type="button"
+                          onClick={() => addSlot(key)}
+                          className="self-start text-xs font-medium text-[#6B7280] hover:text-[#15803D]"
+                        >
+                          + Add hours
+                        </button>
+                      )}
+                    </div>
+                  )}
 
-      <label className="flex shrink-0 items-center gap-2 pt-1 text-xs text-[#4B5563]">
-        <input
-          type="checkbox"
-          checked={day.closed}
-          onChange={(e) => updateDay(key, { closed: e.target.checked })}
-          className="h-4 w-4 accent-[#15803D]"
-        />
-        Closed
-      </label>
-    </div>
-  );
-})}
+                  <label className="flex shrink-0 items-center gap-2 pt-1 text-xs text-[#4B5563]">
+                    <input
+                      type="checkbox"
+                      checked={day.closed}
+                      onChange={(e) => updateDay(key, { closed: e.target.checked })}
+                      className="h-4 w-4 accent-[#15803D]"
+                    />
+                    Closed
+                  </label>
+                </div>
+              );
+            })}
           </div>
         </section>
 
