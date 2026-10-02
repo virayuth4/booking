@@ -231,7 +231,7 @@ const bookingComplete = Boolean(
   guests
 );
 
-  const contactComplete = fullName.trim().length > 0 && contact.trim().length > 0;
+  const contactComplete = fullName.trim().length > 0 && contact.trim().length > 8;
 
   function goToDetails() {
     if (!bookingComplete) return;
