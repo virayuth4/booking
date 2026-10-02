@@ -18,8 +18,7 @@ export default function ReserveOnTelegram({ slug, name }) {
           Reserve a table
         </h2>
         <p className="mt-2 max-w-sm text-sm leading-relaxed text-black/60">
-          Reservations at {name} are made in our Telegram app. It takes less
-          than a minute.
+          Reservations at {name} are made in our Telegram app. 
         </p>
 
         {BOT ? (
@@ -28,7 +27,7 @@ export default function ReserveOnTelegram({ slug, name }) {
             className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#229ED9] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1c8ec6] active:scale-[0.98] sm:w-auto sm:min-w-64"
           >
             <TelegramIcon className="h-4 w-4" />
-            Reserve on Telegram
+            Reserve {name}
           </a>
         ) : (
           <p className="mt-6 text-sm text-black/40">

@@ -99,7 +99,7 @@ export default async function BookPage({ params, searchParams }) {
        */}
           
           
-          <TelegramBookingSwitch slug={slug} name={name}>
+          <TelegramBookingSwitch slug={slug} name={name} category={category}>
 
 
 

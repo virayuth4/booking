@@ -1,5 +1,6 @@
 "use client";
 
+import { getReserveLabel } from "@/lib/dynamicReserveHeader";
 import { TelegramIcon } from "@/lib/icons";
 import { useEffect, useState } from "react";
 
@@ -15,7 +16,7 @@ function inTelegram() {
   return Boolean(window.Telegram?.WebApp?.initData);
 }
 
-export default function TelegramBookingSwitch({ slug, name, children }) {
+export default function TelegramBookingSwitch({ slug, name, category, children }) {
   const [status, setStatus] = useState("checking"); // checking | telegram | web
 
   useEffect(() => {
@@ -48,25 +49,24 @@ if (status === "checking") return <div className="min-h-40 w-full" aria-hidden /
 return (
   <section className="w-full bg-white px-2 py-6 text-center sm:py-8">
     <div className="flex flex-col items-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#229ED9]/10 text-[#229ED9]">
+      {/* <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#229ED9]/10 text-[#229ED9]">
         <TelegramIcon className="h-6 w-6" />
-      </div>
+      </div> */}
 
       <h2 className="mt-5 text-2xl font-semibold tracking-tight text-[#141414] sm:text-3xl">
-        Reserve a table
+         {getReserveLabel(category)}
       </h2>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-black/60">
-        Reservations at {name} are made in our Telegram app. It takes less
-        than a minute.
+        Reservations at {name} are made in our Telegram miniapp. 
       </p>
 
       {BOT ? (
         <a
           href={buildTelegramLink(slug)}
-          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#229ED9] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1c8ec6] active:scale-[0.98] sm:w-auto sm:min-w-64"
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-black px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-black/80 active:scale-[0.98] sm:w-auto sm:min-w-64"
         >
-          <TelegramIcon className="h-4 w-4" />
-          Reserve on Telegram
+          {/* <TelegramIcon className="h-4 w-4" /> */}
+          Reserve {name}
         </a>
       ) : (
         <p className="mt-6 text-sm text-black/40">
@@ -74,7 +74,7 @@ return (
         </p>
       )}
 
-      <p className="mt-4 text-xs text-black/40">Opens in Telegram</p>
+      {/* <p className="mt-4 text-xs text-black/40">Opens in Telegram</p> */}
     </div>
   </section>
 );
