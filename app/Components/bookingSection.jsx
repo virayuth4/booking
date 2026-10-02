@@ -8,6 +8,8 @@ import { useWriteAccessGate } from './useWriteAccessGate';
 import { MONTH_LABELS, WEEKDAY_LABELS } from '@/lib/constants';
 import { groupTimeSlots, getDaySchedule } from '@/lib/groupTimeSlots';
 import { API_BASE } from '@/lib/apiBase';
+import { getReserveLabel } from '@/lib/dynamicReserveHeader';
+import { getReserveSubtitle } from '@/lib/dynamicReserveLabel';
 
 
 function pad2(n) {
@@ -68,7 +70,8 @@ async function defaultGetAvailableTimes(section, dateKey, serviceType, pageId) {
  */
 export default function BookingSection({
   id = 'booking',
-   pageId,
+  pageId,
+  category,
   placeName = '',
   sections = [],
   serviceTypes = [],
@@ -381,10 +384,10 @@ async function handleAllowNotifications() {
     : null;
 return (
     <section id={id} className="scroll-mt-10">
-      <h2 className="text-xl font-semibold tracking-tight text-[#141414]">Reserve a table</h2>
-      <p className="mt-1 text-sm text-black/45">
-        {placeName ? `Book a table at ${placeName} in a couple of taps.` : 'Book a table in a couple of taps.'}
-      </p>
+      <h2 className="text-xl font-semibold tracking-tight text-[#141414]"> {getReserveLabel(category)}</h2>
+     <p className="mt-1 text-sm text-black/45">
+  {getReserveSubtitle(category, placeName)}
+</p>
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-black/10 bg-white">
         {!submitted && (

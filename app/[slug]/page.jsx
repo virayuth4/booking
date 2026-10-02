@@ -5,6 +5,7 @@ import GalleryCarousel from "../Components/galleryCarousel";
 import { getBookingPage } from "@/lib/bookingPage";
 import { TelegramIcon } from "@/lib/icons";
 import { BookingFooter } from "../Components/bookingFooter";
+import { getReserveLabel } from "@/lib/dynamicReserveHeader";
 
 const DAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
@@ -56,6 +57,7 @@ export default async function BookingPage({ params }) {
 
   const {
     name,
+    category,
     logo_url: logoUrl,
     image_rows: rawImageRows = [],
     phone,
@@ -130,7 +132,7 @@ export default async function BookingPage({ params }) {
               className="inline-flex items-center gap-2 rounded-full bg-[#faf9f6] px-5 py-3 text-sm font-medium text-[#141414] transition hover:bg-white"
             >
               <CalendarIcon className="h-4 w-4" />
-              Reserve a table
+              {getReserveLabel(category)}
             </a>
             {telHref && (
               <a
@@ -185,7 +187,7 @@ export default async function BookingPage({ params }) {
           <aside className="hidden lg:block">
             <div className="sticky top-24 rounded-2xl border border-black/10 bg-white p-6">
               <h2 className="text-lg font-semibold tracking-tight text-[#141414]">
-                Reserve
+                 {getReserveLabel(category)}
               </h2>
               <p className="mt-1 text-sm text-black/45">
                 Pick a time online, or call or message us directly.
@@ -197,7 +199,7 @@ export default async function BookingPage({ params }) {
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-[#141414] px-4 py-3 text-sm font-medium text-[#faf9f6] transition hover:bg-black"
                 >
                   <CalendarIcon className="h-4 w-4" />
-                  Reserve
+                   {getReserveLabel(category)}
                 </a>
                 {telHref && (
                   <a

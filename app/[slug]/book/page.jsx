@@ -25,6 +25,7 @@ export default async function BookPage({ params, searchParams }) {
 
   const {
     name,
+    category,
     logo_url: logoUrl,
     image_rows: rawImageRows = [],
     opening_hours: openingHours,
@@ -88,6 +89,7 @@ export default async function BookPage({ params, searchParams }) {
           
  {/* <BookingSection
         pageId={page.id}
+        category={category}
         placeName={name}
         sections={sections}
         serviceTypes={serviceTypes}
@@ -107,6 +109,7 @@ export default async function BookPage({ params, searchParams }) {
 
       <BookingSection
         pageId={page.id}
+        category={category}
         placeName={name}
         sections={sections}
         serviceTypes={serviceTypes}
