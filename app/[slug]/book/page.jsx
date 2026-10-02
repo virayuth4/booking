@@ -21,7 +21,6 @@ export default async function BookPage({ params, searchParams }) {
   const isTelegram = platform === "tg";
 
   const page = await getBookingPage(slug);
-
   if (!page) notFound();
 
   const {
@@ -53,7 +52,7 @@ export default async function BookPage({ params, searchParams }) {
 
   // Hero = first image of the first row, falling back to the logo.
   const heroImage = imageRows[0]?.images[0] || logoUrl;
-  const reserveCard = <ReserveOnTelegram slug={slug} name={name} />;
+  const reserveCard = <ReserveOnTelegram slug={slug} name={name} category={category} />;
 
   return (
     <main className="relative min-h-dvh w-full bg-white pb-8 font-sans text-[#141414] antialiased">
@@ -100,13 +99,18 @@ export default async function BookPage({ params, searchParams }) {
        */}
           
           
-          <TelegramBookingSwitch slug={slug} name={name} category={category}>
-
+   
 
 
 
   {isTelegram ? (
-      <TelegramGuard >
+    <TelegramBookingSwitch
+  slug={slug}
+  name={name}
+  category={category}
+  isTelegram={isTelegram}
+>
+    
 
       <BookingSection
         pageId={page.id}
@@ -117,13 +121,15 @@ export default async function BookPage({ params, searchParams }) {
         openingHours={openingHours}
         maxDaysAhead={page.max_days_ahead ?? 60}
       />
-        </TelegramGuard>
+
+      </TelegramBookingSwitch>
+    
 
     ) : (
       reserveCard
     )}
 
-        </TelegramBookingSwitch>
+     
         {imageRows.length > 0 && <GalleryCarousel rows={imageRows} name={name} />}
 
         <HoursList

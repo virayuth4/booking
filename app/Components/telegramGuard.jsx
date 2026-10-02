@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 
 export default function TelegramGuard({ children, fallback = null }) {
-  const [ok, setOk] = useState(null); // null = checking
+  // Optimistic: the server already saw ?platform=tg, so render immediately
+  const [ok, setOk] = useState(true);
 
   useEffect(() => {
-    setOk(Boolean(window.Telegram?.WebApp?.initData));
+    if (!window.Telegram?.WebApp?.initData) setOk(false);
   }, []);
 
-  if (ok === null) return null;       // or a skeleton
   return ok ? children : fallback;
 }

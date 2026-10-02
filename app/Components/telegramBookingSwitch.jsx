@@ -1,54 +1,79 @@
 "use client";
 
-import { getReserveLabel } from "@/lib/dynamicReserveHeader";
-import { TelegramIcon } from "@/lib/icons";
 import { useEffect, useState } from "react";
+import { getReserveLabel } from "@/lib/dynamicReserveHeader";
 
 const BOT = process.env.NEXT_PUBLIC_TG_MINIAPP_LINK;
-const APP = process.env.NEXT_PUBLIC_TELEGRAM_APP_SHORT_NAME; // optional
 
 function buildTelegramLink(slug) {
-  return `${process.env.NEXT_PUBLIC_TG_MINIAPP_LINK}?startapp=${encodeURIComponent(slug)}`;
+  return `${BOT}?startapp=${encodeURIComponent(slug)}`;
 }
 
-function inTelegram() {
-  // initData is only non-empty when launched from inside Telegram
-  return Boolean(window.Telegram?.WebApp?.initData);
-}
+export default function TelegramBookingSwitch({
+  slug,
+  name,
+  category,
+  isTelegram, // from the server: platform === "tg"
+  children,
+}) {
+  // Start from the server's guess so something renders immediately
+  const [inTg, setInTg] = useState(isTelegram);
 
-export default function TelegramBookingSwitch({ slug, name, category, children }) {
+  useEffect(() => {
+    const check = () => Boolean(window.Telegram?.WebApp?.initData);
 
+    if (check()) {
+      setInTg(true);
+      return;
+    }
 
-return (
-  <section className="w-full bg-white px-2 py-6 text-center sm:py-8">
-    <div className="flex flex-col items-center">
-      {/* <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#229ED9]/10 text-[#229ED9]">
-        <TelegramIcon className="h-6 w-6" />
-      </div> */}
+    // Telegram script loaded but no initData -> definitely a normal browser
+    if (window.Telegram?.WebApp) {
+      setInTg(false);
+      return;
+    }
 
-      <h2 className="mt-5 text-2xl font-semibold tracking-tight text-[#141414] sm:text-3xl">
-         {getReserveLabel(category)}
-      </h2>
-      <p className="mt-2 max-w-sm text-sm leading-relaxed text-black/60">
-        Reservations at {name} are made in our Telegram miniapp. 
-      </p>
+    // Script not loaded yet: poll briefly before giving up
+    let tries = 0;
+    const id = setInterval(() => {
+      tries += 1;
+      if (check()) {
+        clearInterval(id);
+        setInTg(true);
+      } else if (tries >= 15) {
+        clearInterval(id);
+        setInTg(false);
+      }
+    }, 100);
 
-      {BOT ? (
-        <a
-          href={buildTelegramLink(slug)}
-          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-black px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-black/80 active:scale-[0.98] sm:w-auto sm:min-w-64"
-        >
-          {/* <TelegramIcon className="h-4 w-4" /> */}
-          Reserve {name}
-        </a>
-      ) : (
-        <p className="mt-6 text-sm text-black/40">
-          Telegram booking is unavailable.
+    return () => clearInterval(id);
+  }, []);
+
+  if (inTg) return children;
+
+  return (
+    <section className="w-full bg-white px-2 py-6 text-center sm:py-8">
+      <div className="flex flex-col items-center">
+        <h2 className="mt-5 text-2xl font-semibold tracking-tight text-[#141414] sm:text-3xl">
+          {getReserveLabel(category)}
+        </h2>
+        <p className="mt-2 max-w-sm text-sm leading-relaxed text-black/60">
+          Reservations at {name} are made in our Telegram app.
         </p>
-      )}
 
-      {/* <p className="mt-4 text-xs text-black/40">Opens in Telegram</p> */}
-    </div>
-  </section>
-);
+        {BOT ? (
+          <a
+            href={buildTelegramLink(slug)}
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-black px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-black/80 active:scale-[0.98] sm:w-auto sm:min-w-64"
+          >
+            Reserve {name}
+          </a>
+        ) : (
+          <p className="mt-6 text-sm text-black/40">
+            Telegram booking is unavailable.
+          </p>
+        )}
+      </div>
+    </section>
+  );
 }
