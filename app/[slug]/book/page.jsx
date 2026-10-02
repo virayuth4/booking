@@ -21,6 +21,7 @@ export default async function BookPage({ params, searchParams }) {
   const isTelegram = platform === "tg";
 
   const page = await getBookingPage(slug);
+
   if (!page) notFound();
 
   const {

@@ -2,7 +2,7 @@ export default function Loading() {
   return (
     <div className="min-h-dvh w-full bg-white flex items-center justify-center">
       <div className="relative overflow-hidden">
-        <span className="text-[#141414] text-2xl font-medium tracking-[0.18em] lowercase">
+        <span className="text-[#141414] text-2xl font-medium tracking-[0.10em] lowercase">
           acme reserve
         </span>
 

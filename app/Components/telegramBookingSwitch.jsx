@@ -17,34 +17,7 @@ function inTelegram() {
 }
 
 export default function TelegramBookingSwitch({ slug, name, category, children }) {
-  const [status, setStatus] = useState("checking"); // checking | telegram | web
 
-  useEffect(() => {
-    if (inTelegram()) {
-      setStatus("telegram");
-      return;
-    }
-    // Give the Telegram script a moment to load before deciding it's the web
-    let tries = 0;
-    const id = setInterval(() => {
-      tries += 1;
-      if (inTelegram()) {
-        clearInterval(id);
-        setStatus("telegram");
-      } else if (tries >= 15) {
-        clearInterval(id);
-        setStatus("web");
-      }
-    }, 100);
-    return () => clearInterval(id);
-  }, []);
-
-  if (status === "checking") {
-    return <div className="min-h-40 w-full" aria-hidden />;
-  }
-
-if (status === "checking") return <div className="min-h-40 w-full" aria-hidden />;
-  if (status === "telegram") return children;
 
 return (
   <section className="w-full bg-white px-2 py-6 text-center sm:py-8">
