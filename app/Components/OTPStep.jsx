@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Send } from 'lucide-react';
 import { fieldClasses, primaryButtonClasses } from '@/lib/formStyle';
+import { QRCodeSVG } from 'qrcode.react';
 
 const REGISTRATION_API = `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/user/registration`;
 const OTP_LIFETIME_SECONDS = 60;
@@ -216,6 +217,16 @@ export default function OtpStep({ phoneNumber, onVerified, onSubmitCode, onBusyC
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Waiting for Telegram...</span>
             </div>
+
+             {/* Desktop only: phones are already in the right place, so they use the link instead */}
+    {tgDeepLink && (
+      <div className="hidden flex-col items-center gap-2 rounded-xl border border-black/10 p-4 md:flex">
+        <div className="rounded-lg bg-white p-2">
+          <QRCodeSVG value={tgDeepLink} size={168} level="M" marginSize={1} />
+        </div>
+        <p className="text-xs text-black/55">Scan with your phone to open Telegram</p>
+      </div>
+    )}
 
             <ol className="space-y-2 text-sm">
               <li className={`flex gap-3 ${tgDetail === 'pending' ? 'text-[#141414]' : 'text-black/35'}`}>
