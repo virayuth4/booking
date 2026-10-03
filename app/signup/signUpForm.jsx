@@ -195,7 +195,7 @@ export default function SignUpForm() {
         {/* Step 1: Phone */}
         {step === STEPS.PHONE && (
           <>
-            <button
+            {/* <button
               type="button"
               onClick={handleGoogleSignUp}
               disabled={isGoogleLoading}
@@ -213,7 +213,7 @@ export default function SignUpForm() {
               <div className="h-px flex-1 bg-black/10" />
               <span className="font-mono text-[11px] tracking-wide text-black/35">OR</span>
               <div className="h-px flex-1 bg-black/10" />
-            </div>
+            </div> */}
 
             <form onSubmit={handlePhoneSubmit} className="space-y-5">
               <div>

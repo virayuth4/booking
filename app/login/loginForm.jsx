@@ -109,7 +109,7 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
         )}
 
         {/* Google Sign-in */}
-        <button
+        {/* <button
           type="button"
           onClick={handleGoogleSignIn}
           disabled={isLoading}
@@ -121,13 +121,13 @@ export default function LoginForm({ isMerchant = false, callback: callbackProp }
             <GoogleIcon />
           )}
           <span>Continue with Google</span>
-        </button>
+        </button> */}
 
-        <div className="my-5 flex items-center gap-3">
+        {/* <div className="my-5 flex items-center gap-3">
           <div className="h-px flex-1 bg-black/10" />
           <span className="font-mono text-[11px] tracking-wide text-black/35">OR</span>
           <div className="h-px flex-1 bg-black/10" />
-        </div>
+        </div> */}
 
         {/* Form */}
         <form onSubmit={handleSignIn} className="space-y-5">
