@@ -31,6 +31,7 @@ export default async function BookPage({ params, searchParams }) {
     opening_hours: openingHours,
     sections: rawSections = [],
     service_types: rawServiceTypes = [],
+    service_notes: serviceNotes = [],
     closed_dates: closedDates = [],
   } = page;
 
@@ -97,6 +98,7 @@ export default async function BookPage({ params, searchParams }) {
         telegram={page.telegram}
         sections={sections}
         serviceTypes={serviceTypes}
+        serviceNote={page.service_types_note}
         openingHours={openingHours}
         maxDaysAhead={page.max_days_ahead ?? 60}
       />
@@ -118,6 +120,8 @@ export default async function BookPage({ params, searchParams }) {
         placeName={name}
         sections={sections}
         serviceTypes={serviceTypes}
+        serviceNote={page.service_types_note}
+
         openingHours={openingHours}
         maxDaysAhead={page.max_days_ahead ?? 60}
       />

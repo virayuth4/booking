@@ -44,7 +44,16 @@ function buildMonthGrid(year, month) {
 }
 
 
-
+function parseSlotMinutes(str) {
+  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(String(str).trim());
+  if (!m) return null;
+  let h = Number(m[1]);
+  const min = Number(m[2]);
+  const ap = m[3]?.toUpperCase();
+  if (ap === 'PM' && h < 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return h * 60 + min;
+}
 
 
 async function defaultGetAvailableTimes(section, dateKey, serviceType, pageId) {
@@ -226,6 +235,38 @@ function requestTelegramWriteAccess(tg) {
   function toggleField(field) {
     setActiveField((current) => (current === field ? null : field));
   }
+
+  const MIN_LEAD_MINUTES = 0;
+
+const [now, setNow] = useState(() => new Date());
+
+// Keep "now" fresh so slots expire while the page stays open
+useEffect(() => {
+  const id = setInterval(() => setNow(new Date()), 30_000);
+  return () => clearInterval(id);
+}, []);
+
+// Only affects today; other dates are returned untouched
+const visibleTimeSlots = useMemo(() => {
+  if (!selectedDate || !isSameDay(selectedDate, now)) return timeSlots;
+
+  const nowMinutes = now.getHours() * 60 + now.getMinutes() + MIN_LEAD_MINUTES;
+
+  return timeSlots.map((slot) => {
+    const slotMinutes = parseSlotMinutes(slot.time);
+    if (slotMinutes !== null && slotMinutes <= nowMinutes) {
+      return { ...slot, available: false };
+    }
+    return slot;
+  });
+}, [timeSlots, selectedDate, now]);
+
+// If the chosen time expires (e.g. user waited on the page), clear it
+useEffect(() => {
+  if (!time) return;
+  const slot = visibleTimeSlots.find((s) => s.time === time);
+  if (slot && !slot.available) setTime(null);
+}, [visibleTimeSlots, time]);
 
 
 const bookingComplete = Boolean(
@@ -429,7 +470,7 @@ return (
               selectedDateLabel={formattedDate}
               time={time}
               canShowTimes={canShowTimes}
-              timeSlots={timeSlots}
+              timeSlots={visibleTimeSlots}
               activeField={activeField}
               onToggleField={toggleField}
               openingHours={openingHours}
@@ -865,6 +906,7 @@ function ServiceTypeSelector({ serviceTypes, selected, onSelect }) {
   if (!serviceTypes || serviceTypes.length === 0) {
     return <p className="py-2 text-center text-sm text-black/40">No service types available.</p>;
   }
+  
 
   return (
     <div className="flex flex-col gap-2">
@@ -875,14 +917,21 @@ function ServiceTypeSelector({ serviceTypes, selected, onSelect }) {
             key={option.id}
             type="button"
             onClick={() => onSelect(option)}
-            className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
-              isSelected ? 'border-[#141414] bg-[#faf9f6]' : 'border-black/10 hover:border-black/25 hover:bg-[#faf9f6]'
+            className={`flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+              isSelected
+                ? 'border-[#141414] bg-[#faf9f6]'
+                : 'border-black/10 hover:border-black/25 hover:bg-[#faf9f6]'
             }`}
           >
-            <span className={`text-sm font-medium ${isSelected ? 'text-[#141414]' : 'text-black/60'}`}>
-              {option.name}
+            <span className="min-w-0 flex-1">
+              <span className={`block text-sm font-medium ${isSelected ? 'text-[#141414]' : 'text-black/60'}`}>
+                {option.name}
+              </span>
+              {option.note && (
+                <span className="mt-0.5 block text-xs leading-5 text-black/40">{option.note}</span>
+              )}
             </span>
-            {isSelected && <CheckIcon className="h-4 w-4 text-[#141414]" />}
+            {isSelected && <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#141414]" />}
           </button>
         );
       })}
