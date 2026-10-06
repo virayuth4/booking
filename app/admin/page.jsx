@@ -201,7 +201,7 @@ export default function AdminHome() {
 
       <div className="mx-auto max-w-5xl px-6 py-12">
         {/* Booking pages */}
-        <section className="border-b border-black/10 pb-8">
+        <section className=" pb-8">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">

@@ -75,6 +75,17 @@ function slugify(text) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50MB
+const MAX_VIDEOS_TOTAL = 5;
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+const ACCEPT_ATTR = "image/*,video/mp4,video/webm,video/quicktime";
+const VIDEO_URL_RE = /\.(mp4|m4v|mov|webm)(\?.*)?$/i;
+const isVideoUrl = (url) => typeof url === "string" && VIDEO_URL_RE.test(url);
+const formatMB = (bytes) => `${Math.round(bytes / 1024 / 1024)}MB`;
+
 function BookingSettingsContent() {
   const { currentUser, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
@@ -202,6 +213,7 @@ function BookingSettingsContent() {
                 file: null,
                 previewUrl: url,
                 existing: true,
+                type: isVideoUrl(url) ? "video" : "image",
               })),
             }))
           );
@@ -216,6 +228,7 @@ function BookingSettingsContent() {
                 file: null,
                 previewUrl: url,
                 existing: true,
+                type: isVideoUrl(url) ? "video" : "image",
               })),
             },
           ]);
@@ -493,37 +506,69 @@ const copyMondayToAll = () =>
     );
 
   const addImagesToRow = (rowId, fileList) => {
-    const incoming = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
-    if (!incoming.length) return;
+    const row = imageRowsRef.current.find((r) => r.id === rowId);
+    if (!row) return;
+
+    const slots = MAX_IMAGES_PER_ROW - row.images.length;
+    if (slots <= 0) {
+      setRowError(rowId, `You can upload up to ${MAX_IMAGES_PER_ROW} photos/videos in this row.`);
+      return;
+    }
+
+    let videosTotal = imageRowsRef.current.reduce(
+      (n, r) => n + r.images.filter((i) => i.type === "video").length,
+      0
+    );
+
+    const accepted = [];
+    const problems = [];
+
+    for (const file of Array.from(fileList)) {
+      const isVideo = file.type.startsWith("video/");
+      const isImage = file.type.startsWith("image/");
+
+      if (!isVideo && !isImage) {
+        problems.push(`"${file.name}" isn't a photo or video.`);
+        continue;
+      }
+      if (isVideo && !ALLOWED_VIDEO_TYPES.includes(file.type)) {
+        problems.push(`"${file.name}": only MP4, WEBM or MOV videos are supported.`);
+        continue;
+      }
+      if (isImage && file.size > MAX_IMAGE_BYTES) {
+        problems.push(`"${file.name}" is over ${formatMB(MAX_IMAGE_BYTES)}.`);
+        continue;
+      }
+      if (isVideo && file.size > MAX_VIDEO_BYTES) {
+        problems.push(`"${file.name}" is over ${formatMB(MAX_VIDEO_BYTES)}.`);
+        continue;
+      }
+      if (isVideo && videosTotal >= MAX_VIDEOS_TOTAL) {
+        problems.push(`You can add up to ${MAX_VIDEOS_TOTAL} videos in total.`);
+        continue;
+      }
+      if (accepted.length >= slots) {
+        problems.push(
+          `Only ${slots} more file${slots === 1 ? "" : "s"} can be added (max ${MAX_IMAGES_PER_ROW}).`
+        );
+        break;
+      }
+
+      if (isVideo) videosTotal += 1;
+      accepted.push({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: URL.createObjectURL(file),
+        existing: false,
+        type: isVideo ? "video" : "image",
+      });
+    }
+
+    setRowError(rowId, problems[0] || "");
+    if (!accepted.length) return;
 
     setImageRows((prev) =>
-      prev.map((row) => {
-        if (row.id !== rowId) return row;
-        const slots = MAX_IMAGES_PER_ROW - row.images.length;
-        if (slots <= 0) {
-          setRowError(rowId, `You can upload up to ${MAX_IMAGES_PER_ROW} photos in this row.`);
-          return row;
-        }
-        const accepted = incoming.slice(0, slots);
-        setRowError(
-          rowId,
-          incoming.length > accepted.length
-            ? `Only ${slots} more photo${slots === 1 ? "" : "s"} can be added (max ${MAX_IMAGES_PER_ROW}).`
-            : ""
-        );
-        return {
-          ...row,
-          images: [
-            ...row.images,
-            ...accepted.map((file) => ({
-              id: crypto.randomUUID(),
-              file,
-              previewUrl: URL.createObjectURL(file),
-              existing: false,
-            })),
-          ],
-        };
-      })
+      prev.map((r) => (r.id === rowId ? { ...r, images: [...r.images, ...accepted] } : r))
     );
   };
 
@@ -1060,14 +1105,15 @@ const copyMondayToAll = () =>
           )}
         </section>
 
-        {/* Photo Rows — each row is a named gallery, capped at MAX_IMAGES_PER_ROW */}
+             {/* Media Rows — each row is a named gallery of photos/videos, capped at MAX_IMAGES_PER_ROW */}
         <section className="mt-10">
           <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-semibold text-[#374151]">Photos</h2>
+            <h2 className="text-sm font-semibold text-[#374151]">Photos & videos</h2>
             <span className="text-xs text-[#9CA3AF]">Up to {MAX_IMAGES_PER_ROW} per row</span>
           </div>
           <p className="mt-1 text-xs text-[#9CA3AF]">
-            Group your photos under headers guests will see, like "Seatings" or "Menu".
+            Group your media under headers guests will see, like "Seatings" or "Menu". Videos: MP4,
+            WEBM or MOV, up to {formatMB(MAX_VIDEO_BYTES)} each ({MAX_VIDEOS_TOTAL} max in total).
           </p>
 
           <div className="mt-4 space-y-6">
@@ -1110,11 +1156,13 @@ const copyMondayToAll = () =>
                   }`}
                 >
                   {row.images.length >= MAX_IMAGES_PER_ROW ? (
-                    <span>Maximum of {MAX_IMAGES_PER_ROW} photos reached</span>
+                    <span>Maximum of {MAX_IMAGES_PER_ROW} files reached</span>
                   ) : (
                     <>
                       <span className="font-medium text-[#171717]">Click to upload</span>
-                      <span className="mt-1 text-xs text-[#9CA3AF]">or drag and drop · PNG, JPG, WEBP</span>
+                      <span className="mt-1 text-xs text-[#9CA3AF]">
+                        or drag and drop · PNG, JPG, WEBP, MP4, WEBM, MOV
+                      </span>
                     </>
                   )}
                   <input
@@ -1122,7 +1170,7 @@ const copyMondayToAll = () =>
                       fileInputRefs.current[row.id] = el;
                     }}
                     type="file"
-                    accept="image/*"
+                    accept={ACCEPT_ATTR}
                     multiple
                     onChange={(e) => {
                       if (e.target.files?.length) addImagesToRow(row.id, e.target.files);
@@ -1141,13 +1189,34 @@ const copyMondayToAll = () =>
                     {row.images.map((img) => (
                       <div
                         key={img.id}
-                        className="group relative aspect-square overflow-hidden rounded-md border border-[#E5E7EB]"
+                        className="group relative aspect-square overflow-hidden rounded-md border border-[#E5E7EB] bg-black/5"
                       >
-                        <img src={img.previewUrl} alt="Upload preview" className="h-full w-full object-cover" />
+                        {img.type === "video" ? (
+                          <>
+                            <video
+                              src={`${img.previewUrl}#t=0.1`}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              controls
+                              className="h-full w-full object-cover"
+                            />
+                            <span className="pointer-events-none absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                              VIDEO
+                              {img.file ? ` · ${(img.file.size / 1024 / 1024).toFixed(1)}MB` : ""}
+                            </span>
+                          </>
+                        ) : (
+                          <img
+                            src={img.previewUrl}
+                            alt="Upload preview"
+                            className="h-full w-full object-cover"
+                          />
+                        )}
                         <button
                           type="button"
                           onClick={() => removeImageFromRow(row.id, img.id)}
-                          aria-label="Remove photo"
+                          aria-label="Remove file"
                           className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white opacity-0 transition group-hover:opacity-100"
                         >
                           ✕
