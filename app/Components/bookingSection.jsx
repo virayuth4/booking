@@ -98,7 +98,7 @@ export default function BookingSection({
   const [guests, setGuests] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [section, setSection] = useState(() => (sections.length === 1 ? sections[0] : null));  
-  const [serviceType, setServiceType] = useState(() => (serviceTypes.length > 0 ? serviceTypes[0] : null));
+  const [serviceType, setServiceType] = useState(null);
   const [time, setTime] = useState(null);
   const { getAnonId } = useAuth();
   const anonId = getAnonId()
