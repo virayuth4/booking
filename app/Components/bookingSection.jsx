@@ -158,7 +158,7 @@ useEffect(() => {
   const [needsTelegramPermission, setNeedsTelegramPermission] = useState(false);
 
 
-
+console.log("serviceTypes", serviceTypes)
 
   const today = useMemo(() => {
     const d = new Date();
