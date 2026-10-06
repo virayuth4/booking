@@ -95,7 +95,7 @@ export default function BookingSection({
   const [step, setStep] = useState(1);
   const [activeField, setActiveField] = useState(null);
 
-  const [guests, setGuests] = useState(2);
+  const [guests, setGuests] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [section, setSection] = useState(() => (sections.length === 1 ? sections[0] : null));  
   const [serviceType, setServiceType] = useState(() => (serviceTypes.length > 0 ? serviceTypes[0] : null));
@@ -133,12 +133,7 @@ function getStoredBookings() {
   }
 }
 
-  // Sync if props change
-useEffect(() => {
-  if (serviceTypes.length > 0 && !serviceType) {
-    setServiceType(serviceTypes[0]);
-  }
-}, [serviceTypes, serviceType]);
+
   const [fullName, setFullName] = useState('');
   const [contact, setContact] = useState('');
   const [note, setNote] = useState('');
@@ -158,7 +153,7 @@ useEffect(() => {
   const [needsTelegramPermission, setNeedsTelegramPermission] = useState(false);
 
 
-console.log("serviceTypes", serviceTypes)
+// console.log("serviceTypes", serviceTypes)
 
   const today = useMemo(() => {
     const d = new Date();
@@ -296,10 +291,10 @@ const bookingComplete = Boolean(
 function startOver() {
     setStep(1);
     setActiveField(null);
-    setGuests(2);
+    setGuests(null);
     setSelectedDate(null);
     setSection(sections.length === 1 ? sections[0] : null);
-    setServiceType(serviceTypes.length === 1 ? serviceTypes[0] : null);
+    setServiceType(null);
     setTime(null);
     setFullName('');
     setContact('');
@@ -640,7 +635,8 @@ function BookingStep({
 <BookingField
   label="Guests"
   icon={Users}
-  value={`${guests} ${guests === 1 ? 'guest' : 'guests'}`}
+  value={guests ? `${guests} ${guests === 1 ? 'guest' : 'guests'}` : null}
+  placeholder="Choose number of guests"
   isOpen={activeField === 'guests'}
   onClick={() => onToggleField('guests')}
 >
@@ -866,8 +862,8 @@ function GuestSelector({ guests, setGuests, maxGuests, onConfirm }) {
       <div className="flex items-center justify-center gap-6 py-2">
         <button
           type="button"
-          disabled={guests <= 1}
-          onClick={() => setGuests((g) => Math.max(1, g - 1))}
+          disabled={!guests || guests <= 1}
+          onClick={() => setGuests((g) => Math.max(1, (g ?? 1) - 1))}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 text-black/60 transition hover:border-black/25 disabled:opacity-30"
           aria-label="Decrease guests"
         >
@@ -875,14 +871,14 @@ function GuestSelector({ guests, setGuests, maxGuests, onConfirm }) {
         </button>
 
         <div className="w-20 text-center">
-          <div className="text-2xl font-semibold text-[#141414]">{guests}</div>
+          <div className="text-2xl font-semibold text-[#141414]">{guests ?? '–'}</div>
           <div className="mt-1 text-xs text-black/45">{guests === 1 ? 'guest' : 'guests'}</div>
         </div>
 
         <button
           type="button"
           disabled={guests >= maxGuests}
-          onClick={() => setGuests((g) => Math.min(maxGuests, g + 1))}
+          onClick={() => setGuests((g) => Math.min(maxGuests, (g ?? 0) + 1))}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 text-black/60 transition hover:border-black/25 disabled:opacity-30"
           aria-label="Increase guests"
         >
@@ -892,10 +888,11 @@ function GuestSelector({ guests, setGuests, maxGuests, onConfirm }) {
 
       <button
         type="button"
+        disabled={!guests}
         onClick={onConfirm}
-        className="w-full rounded-full bg-[#141414] px-5 py-3 text-sm font-medium text-[#faf9f6] transition hover:bg-black"
+        className="w-full rounded-full bg-[#141414] px-5 py-3 text-sm font-medium text-[#faf9f6] transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Confirm {guests} {guests === 1 ? 'guest' : 'guests'}
+        {guests ? `Confirm ${guests} ${guests === 1 ? 'guest' : 'guests'}` : 'Select number of guests'}
       </button>
     </div>
   );
