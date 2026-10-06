@@ -87,19 +87,19 @@ export default async function BookPage({ params, searchParams }) {
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-5 pt-10 sm:px-6">
 
           
- {/* <BookingSection
+
+          
+          
+    <BookingSection
         pageId={page.id}
         category={category}
         placeName={name}
+        telegram={page.telegram}
         sections={sections}
         serviceTypes={serviceTypes}
         openingHours={openingHours}
         maxDaysAhead={page.max_days_ahead ?? 60}
       />
-       */}
-          
-          
-   
 
 
 

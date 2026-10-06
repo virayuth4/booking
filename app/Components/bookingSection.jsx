@@ -10,6 +10,7 @@ import { groupTimeSlots, getDaySchedule } from '@/lib/groupTimeSlots';
 import { API_BASE } from '@/lib/apiBase';
 import { getReserveLabel } from '@/lib/dynamicReserveHeader';
 import { getReserveSubtitle } from '@/lib/dynamicReserveLabel';
+import { TelegramIcon } from '@/lib/icons';
 
 
 function pad2(n) {
@@ -73,6 +74,7 @@ export default function BookingSection({
   pageId,
   category,
   placeName = '',
+  telegram='',
   sections = [],
   serviceTypes = [],
   openingHours = {},
@@ -91,6 +93,7 @@ export default function BookingSection({
   const [time, setTime] = useState(null);
   const { getAnonId } = useAuth();
   const anonId = getAnonId()
+    const [bookingFailed, setBookingFailed] = useState(false);
 
 
     const BOOKINGS_STORAGE_KEY = 'bookings';
@@ -246,6 +249,7 @@ const bookingComplete = Boolean(
   setStep(1);
   setNeedsTelegramPermission(false);
   setError(null);
+  setBookingFailed(false);
 }
 
 function startOver() {
@@ -269,6 +273,7 @@ function startOver() {
 async function submitBooking(tg, writeAllowed) {
   setSubmitting(true);
   setError(null);
+  setBookingFailed(false);
 
   try {
     const url = `${API_BASE}/api/booking-link/booking/create`;
@@ -333,6 +338,7 @@ async function submitBooking(tg, writeAllowed) {
   } catch (err) {
     console.error('submitBooking error:', err);
     setError(err.message || 'Something went wrong. Please try again.');
+    setBookingFailed(true);
   } finally {
     setSubmitting(false);
   }
@@ -514,6 +520,17 @@ return (
   {error && (
     <p className="text-center text-xs font-medium text-red-600">{error}</p>
   )}
+   {bookingFailed && telegram && (
+                    <a
+                      href={telegram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-black/10 px-4 py-3 text-sm font-medium text-[#141414] transition hover:border-black/20"
+                    >
+                      <TelegramIcon className="h-4 w-4" />
+                      Message on Telegram
+                    </a>
+                  )}
 </div>
             )}
           </div>
