@@ -91,7 +91,7 @@ export default async function BookPage({ params, searchParams }) {
 
           
           
-    <BookingSection
+    {/* <BookingSection
         pageId={page.id}
         category={category}
         placeName={name}
@@ -101,7 +101,7 @@ export default async function BookPage({ params, searchParams }) {
         serviceNote={page.service_types_note}
         openingHours={openingHours}
         maxDaysAhead={page.max_days_ahead ?? 60}
-      />
+      /> */}
 
 
 
