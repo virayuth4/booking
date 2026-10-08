@@ -5,9 +5,7 @@ import { AuthProvider } from "./auth/authContext";
 import { NavActionProvider } from "./context/navActionContext";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
-import Navigation from "./Components/navigation/navigation";
 import ConditionalNavigation from "./Components/navigation/conditionalNavigation";
-import TelegramFloat from "./Components/floatingCustomerSupport";
 
 // Load Google Sans alternative (Plus Jakarta Sans)
 const googleSans = Plus_Jakarta_Sans({

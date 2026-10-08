@@ -11,6 +11,7 @@ import { API_BASE } from '@/lib/apiBase';
 import { getReserveLabel } from '@/lib/dynamicReserveHeader';
 import { getReserveSubtitle } from '@/lib/dynamicReserveLabel';
 import { TelegramIcon } from '@/lib/icons';
+import { getNotePlaceholder } from '@/lib/dynamicNotes';
 
 
 function pad2(n) {
@@ -373,7 +374,8 @@ async function submitBooking(tg, writeAllowed) {
     setSubmitted(true);
   } catch (err) {
     console.error('submitBooking error:', err);
-    setError(err.message || 'Something went wrong. Please try again.');
+    setError('Something went wrong and your booking was not sent. Please contact the merchant directly.');
+
     setBookingFailed(true);
   } finally {
     setSubmitting(false);
@@ -505,6 +507,7 @@ return (
               setContact={setContact}
               note={note}
               setNote={setNote}
+              category={category}
             />
           )}
         </div>
@@ -553,20 +556,29 @@ return (
     </div>
   </div>
 
-  {error && (
-    <p className="text-center text-xs font-medium text-red-600">{error}</p>
+ {error && (
+    <div
+      role="alert"
+      className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center"
+    >
+      <p className="text-sm font-semibold text-red-700">
+        {bookingFailed ? 'Something went wrong' : 'Booking not sent yet'}
+      </p>
+      <p className="mt-1 text-xs leading-5 text-red-600">{error}</p>
+    </div>
   )}
-   {bookingFailed && telegram && (
-                    <a
-                      href={telegram}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 rounded-full border border-black/10 px-4 py-3 text-sm font-medium text-[#141414] transition hover:border-black/20"
-                    >
-                      <TelegramIcon className="h-4 w-4" />
-                      Message on Telegram
-                    </a>
-                  )}
+
+  {bookingFailed && telegram && (
+    <a
+      href={telegram}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center justify-center gap-2 rounded-full bg-[#229ED9] px-4 py-3 text-sm font-medium text-white transition hover:opacity-90"
+    >
+      <TelegramIcon className="h-4 w-4" />
+      Contact the merchant on Telegram
+    </a>
+  )}
 </div>
             )}
           </div>
@@ -702,7 +714,7 @@ function BookingStep({
 
 /* ============================== STEP 2 =============================== */
 
-function DetailsStep({ fullName, setFullName, contact, setContact, note, setNote }) {
+function DetailsStep({ fullName, setFullName, contact, setContact, note, setNote, category }) {
   return (
     <div className="flex flex-col gap-5">
       <label className="block">
@@ -733,19 +745,19 @@ function DetailsStep({ fullName, setFullName, contact, setContact, note, setNote
         />
       </label>
 
-      <label className="block">
-        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-black/50">
-          <StickyNote className="h-3.5 w-3.5" />
-          Note <span className="ml-1 font-normal text-black/30">optional</span>
-        </span>
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Allergies, special occasion, seating preference..."
-          rows={4}
-          className="w-full rounded-xl border border-black/10 px-3.5 py-2.5 text-base text-[#141414] outline-none transition-colors placeholder:text-black/30 focus:border-[#141414]"
-        />
-      </label>
+    <label className="block">
+  <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-black/50">
+    <StickyNote className="h-3.5 w-3.5" />
+    Note <span className="ml-1 font-normal text-black/30">optional</span>
+  </span>
+  <textarea
+    value={note}
+    onChange={(e) => setNote(e.target.value)}
+    placeholder={getNotePlaceholder(category)}
+    rows={4}
+    className="w-full rounded-xl border border-black/10 px-3.5 py-2.5 text-base text-[#141414] outline-none transition-colors placeholder:text-black/30 focus:border-[#141414]"
+  />
+</label>
     </div>
   );
 }
@@ -903,12 +915,13 @@ function ServiceTypeSelector({ serviceTypes, selected, onSelect }) {
   if (!serviceTypes || serviceTypes.length === 0) {
     return <p className="py-2 text-center text-sm text-black/40">No service types available.</p>;
   }
-  
 
   return (
     <div className="flex flex-col gap-2">
       {serviceTypes.map((option) => {
         const isSelected = selected?.id === option.id;
+        const hasPrice = Boolean(option.price) && Number(option.price) !== 0;
+
         return (
           <button
             key={option.id}
@@ -928,7 +941,15 @@ function ServiceTypeSelector({ serviceTypes, selected, onSelect }) {
                 <span className="mt-0.5 block text-xs leading-5 text-black/40">{option.note}</span>
               )}
             </span>
-            {isSelected && <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#141414]" />}
+
+            <span className="flex shrink-0 items-center gap-2">
+              {hasPrice && (
+                <span className={`text-sm font-medium ${isSelected ? 'text-[#141414]' : 'text-black/60'}`}>
+                  ${option.price}
+                </span>
+              )}
+              {isSelected && <CheckIcon className="h-4 w-4 text-[#141414]" />}
+            </span>
           </button>
         );
       })}
