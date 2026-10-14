@@ -41,6 +41,7 @@ export default async function BookPage({ params, searchParams }) {
   const todayKey = getTodayKey();
   const todayHours = openingHours?.[todayKey];
   const openNow = isOpenNow(openingHours);
+  console.log("isDevelopment", process.env.NEXT_PUBLIC_IS_DEVELOPMENT);
   
 
   // Clean up rows: trim labels, de-dupe images within a row, drop empty rows.
@@ -71,7 +72,7 @@ export default async function BookPage({ params, searchParams }) {
         <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/60 to-[#141414]/10" />
 
         <div className="relative z-10 mx-auto w-full max-w-3xl px-5 pb-6 pt-16 sm:px-6">
-          <p className="text-sm text-white/60">{openNow ? "Open now" : "Closed now"}</p>
+          {/* <p className="text-sm text-white/60">{openNow ? "Open now" : "Closed now"}</p> */}
 
           <h1 className="mt-2 text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl">
             {name}
@@ -89,19 +90,21 @@ export default async function BookPage({ params, searchParams }) {
 
           
 
-          
-          
-    {/* <BookingSection
-        pageId={page.id}
-        category={category}
-        placeName={name}
-        telegram={page.telegram}
-        sections={sections}
-        serviceTypes={serviceTypes}
-        serviceNote={page.service_types_note}
-        openingHours={openingHours}
-        maxDaysAhead={page.max_days_ahead ?? 60}
-      /> */}
+      {process.env.NEXT_PUBLIC_IS_DEVELOPMENT === "true" && (
+          <BookingSection
+            pageId={page.id}
+            category={category}
+            placeName={name}
+            telegram={page.telegram}
+            sections={sections}
+            serviceTypes={serviceTypes}
+            serviceNote={page.service_types_note}
+            openingHours={openingHours}
+            maxDaysAhead={page.max_days_ahead ?? 60}
+          />
+        )}
+                  
+   
 
 
 

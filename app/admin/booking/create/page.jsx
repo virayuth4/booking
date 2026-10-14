@@ -92,6 +92,8 @@ function BookingSettingsContent() {
   const isEdit = searchParams.get("edit") === "true";
   const pageId = searchParams.get("id");
 
+
+
   const [business, setBusiness] = useState({
     name: "",
     phone: "",
@@ -173,6 +175,8 @@ function BookingSettingsContent() {
     let cancelled = false;
 
     async function loadBookingSettings() {
+      const toLabel = (s) => (typeof s === "string" ? s : s?.name ?? s?.label ?? "");
+
       try {
         const res = await authenticatedFetch(
           `${process.env.NEXT_PUBLIC_BACKEND}/api/booking-link/booking-settings/id/${pageId}`,
@@ -194,7 +198,9 @@ function BookingSettingsContent() {
         }
         if (data.opening_hours) setHours(normalizeHours(data.opening_hours));
         if (data.category) setCategory(data.category);
-        if (Array.isArray(data.service_types)) setServiceTypes(data.service_types);
+        if (Array.isArray(data.service_types)) {
+  setServiceTypes(data.service_types.map(toLabel).filter(Boolean));
+}
         if (data.telegram_chat_id) {
           setTelegramChatId(String(data.telegram_chat_id));
           setTelegramStatus("connected");
@@ -682,6 +688,8 @@ const copyMondayToAll = () =>
     }
   }
 
+
+
   if (authLoading || pageLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-[#9CA3AF]">
@@ -699,6 +707,9 @@ const copyMondayToAll = () =>
   }
 
   const currentCategoryObj = CATEGORIES.find((c) => c.key === category);
+      console.log("suggested:", currentCategoryObj?.suggestedServices);
+console.log("serviceTypes:", serviceTypes);
+console.log("CATEGORIES keys:", CATEGORIES.map((c) => c.key));
 
   return (
     <div className="min-h-screen bg-white font-sans text-[#171717] antialiased">
