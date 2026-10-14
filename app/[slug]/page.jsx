@@ -113,7 +113,7 @@ export default async function BookingPage({ params }) {
         <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/60 to-[#141414]/10" />
 
         <div className="relative z-10 mx-auto w-full max-w-3xl px-5 pb-10 pt-24 sm:px-6 sm:pb-14">
-          <p className="text-sm text-white/60">{openNow ? "Open now" : "Closed now"}</p>
+          {/* <p className="text-sm text-white/60">{openNow ? "Open now" : "Closed now"}</p> */}
 
           <h1 className="mt-2 text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl">
             {name}
