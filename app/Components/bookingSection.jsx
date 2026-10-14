@@ -96,7 +96,7 @@ export default function BookingSection({
   const [step, setStep] = useState(1);
   const [activeField, setActiveField] = useState(null);
 
-  const [guests, setGuests] = useState(null);
+  const [guests, setGuests] = useState(1);
   const [selectedDate, setSelectedDate] = useState(null);
   const [section, setSection] = useState(() => (sections.length === 1 ? sections[0] : null));  
   const [serviceType, setServiceType] = useState(null);
