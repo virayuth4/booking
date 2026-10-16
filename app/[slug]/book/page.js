@@ -1,6 +1,7 @@
 // app/[slug]/book/page.js
 import { redirect } from "next/navigation";
 
+
 export default async function BookPage({ params }) {
   const { slug } = await params;
 
