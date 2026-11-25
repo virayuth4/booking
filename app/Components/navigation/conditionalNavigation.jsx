@@ -18,7 +18,7 @@ export default function ConditionalNavigation() {
   const isBookingPage =
     !isAllowedPage &&
     (segments.length === 1 ||
-      (segments.length === 2 && segments[1] === "book"));
+      (segments.length === 2 && segments[1] === "booking"));
 
   // Don't render navigation anywhere under /admin
   const isAdminPage = segments[0] === "admin";

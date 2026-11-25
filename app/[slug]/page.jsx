@@ -6,6 +6,7 @@ import { getBookingPage } from "@/lib/bookingPage";
 import { TelegramIcon } from "@/lib/icons";
 import { BookingFooter } from "../Components/bookingFooter";
 import { getReserveLabel } from "@/lib/dynamicReserveHeader";
+import { InstagramIcon } from "@/lib/icons/instagram";
 
 const DAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
@@ -48,6 +49,14 @@ function toTelegramHref(telegram) {
   return `https://t.me/${telegram.replace("@", "")}`;
 }
 
+function toInstagramHref(instagram) {
+  if (!instagram) return null;
+  const value = instagram.trim();
+  if (value.startsWith("http")) return value;
+  if (value.includes("instagram.com")) return `https://${value.replace(/^\/+/, "")}`;
+  return `https://instagram.com/${value.replace("@", "")}`;
+}
+
 export default async function BookingPage({ params }) {
   const { slug } = await params;
 
@@ -62,6 +71,7 @@ export default async function BookingPage({ params }) {
     image_rows: rawImageRows = [],
     phone,
     telegram,
+    instagram,
     map,
     opening_hours: openingHours,
     closed_dates: closedDates = [],
@@ -84,6 +94,8 @@ export default async function BookingPage({ params }) {
 
   const telHref = toTelHref(phone);
   const telegramHref = toTelegramHref(telegram);
+  const instagramHref = toInstagramHref(instagram); // new
+  console.log("instagramHref", instagramHref);
 
   // Telegram Mini App deep link (falls back to "#booking" if the env var is missing)
   const miniAppHref = process.env.NEXT_PUBLIC_TG_MINIAPP_LINK
@@ -134,15 +146,18 @@ export default async function BookingPage({ params }) {
               <CalendarIcon className="h-4 w-4" />
               {getReserveLabel(category)}
             </a>
-            {telHref && (
-              <a
-                href={telHref}
-                className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/20"
-              >
-                <PhoneIcon className="h-4 w-4" />
-                {phone}
-              </a>
-            )}
+                 {instagramHref && (
+  <a
+    href={instagramHref}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/20"
+  >
+    <InstagramIcon className="h-4 w-4" />
+    Book on Instagram
+  </a>
+)}
+          
             {telegramHref && (
               <a
                 href={telegramHref}
@@ -154,6 +169,18 @@ export default async function BookingPage({ params }) {
                 Message on Telegram
               </a>
             )}
+
+              {telHref && (
+              <a
+                href={telHref}
+                className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-3 text-sm font-medium text-white backdrop-blur transition hover:bg-white/20"
+              >
+                <PhoneIcon className="h-4 w-4" />
+                Call {phone}
+              </a>
+            )}
+
+       
             {map && (
               <a
                 href={map}

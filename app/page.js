@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import TelegramFloat from "./Components/floatingCustomerSupport";
 import TelegramPreview from "./Components/telegramPreview";
+import MerchantCards from "./Components/merchantCards";
 
 const industries = [
   {
@@ -52,8 +53,17 @@ export default function Home() {
     <main className="min-h-screen bg-white font-sans text-[#141414] antialiased">
               <TelegramFloat/>
 
+              <section className="mx-auto max-w-6xl px-6 mt-12">
+  <h2 className="max-w-xl text-3xl font-semibold tracking-tight md:text-4xl">
+    Businesses already booking with us
+  </h2>
+  <div className="mt-12">
+    <MerchantCards />
+  </div>
+</section>
+
       {/* Hero */}
-      <section className="mx-auto grid max-w-6xl items-center gap-32 px-6 pb-24 pt-20 md:grid-cols-2 md:pb-32 md:pt-28">
+      <section className="mx-auto grid max-w-6xl items-center gap-32 px-6 pb-24 pt-6 md:grid-cols-2 md:pb-32 md:pt-28">
         <div>
           <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
             Bookings that land in your Telegram

@@ -16,7 +16,7 @@ export default function TelegramEntry() {
 
       if (tg?.initData && slug) {
         clearInterval(id);
-        router.replace(`/${encodeURIComponent(slug)}/book?platform=tg`);
+        router.replace(`/${encodeURIComponent(slug)}/booking?platform=tg`);
       } else if (tries >= 15) {
         clearInterval(id);
         setFailed(true);
